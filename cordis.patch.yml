@@ -8,6 +8,10 @@
 # and the `dsh.client` declaration in package.json makes the browser half
 # (exports "./client", served at /plugins/ui-dsh-solution-explorer/client.js)
 # load in the web GUI.
+#
+# Personal fork (@xiaopb): the roster id stays `ui-dsh-solution-explorer` so
+# this build replaces the upstream plugin in place on a device; only the
+# package `name` points at the scoped npm package published from this fork.
 - insert:
     - id: ui-dsh-solution-explorer
-      name: dsh-solution-explorer
+      name: "@xiaopb/dsh-solution-explorer"

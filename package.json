@@ -1,5 +1,5 @@
 {
-  "name": "dsh-solution-explorer",
+  "name": "@xiaopb/dsh-solution-explorer",
   "description": "DSH Web GUI right sidebar, replaced end to end: VS Code-style file explorer plus full source control (git status, stage/unstage/discard, commit, diff, commit graph, fetch/pull/push sync, branch/remote management, git init, multi-repo switch, color-coded status, file-type icons). Every file opened from the chat, the sidebar or source control is taken over into a multi-tab editor view (Markdown/HTML/PDF/image previews, 15-language syntax highlighting, hunk-level diff editing, Ctrl+S save), with file operations (new/move/copy/delete, reveal in file explorer), a collapsible icon rail, a multi-tab bottom terminal (ConPTY) and AI commit messages from a host-configured model.",
   "version": "1.0.3",
   "type": "module",
@@ -110,13 +110,17 @@
   ],
   "license": "MIT",
   "author": "xiaoksio",
-  "homepage": "https://github.com/xiaoksio/dsh-solution-explorer",
+  "homepage": "https://github.com/XiaoPb/dsh-solution-explorer",
   "bugs": {
-    "url": "https://github.com/xiaoksio/dsh-solution-explorer/issues"
+    "url": "https://github.com/XiaoPb/dsh-solution-explorer/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xiaoksio/dsh-solution-explorer.git"
+    "url": "git+https://github.com/XiaoPb/dsh-solution-explorer.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "dsh-plugin",
