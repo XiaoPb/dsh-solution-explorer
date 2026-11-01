@@ -111,7 +111,9 @@ jobs:
           test -d "$PKG/lib/types"
           grep -q '__ModuleLoader__' "$PKG/lib/client.js"
           # 宿主入口的 require 依赖宿主 peer（cordis 等），消费端不 require 只验文件；
-          grep -q 'exports.apply' "$PKG/lib/index.js"
+          # host bundle 是 ESM（package.json type: module），按 ESM 导出形式检查
+          grep -q 'export {' "$PKG/lib/index.js"
+          grep -q 'EXPLORER_GUIDANCE' "$PKG/lib/index.js"
           # 开发目录不能进包
           for dir in test docs scripts .github src; do
             if [ -e "$PKG/$dir" ]; then echo "::error::$dir leaked into the tarball"; exit 1; fi
