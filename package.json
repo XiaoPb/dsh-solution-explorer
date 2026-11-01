@@ -1,7 +1,7 @@
 {
   "name": "@xiaopb/dsh-solution-explorer",
   "description": "DSH Web GUI right sidebar, replaced end to end: VS Code-style file explorer plus full source control (git status, stage/unstage/discard, commit, diff, commit graph, fetch/pull/push sync, branch/remote management, git init, multi-repo switch, color-coded status, file-type icons). Every file opened from the chat, the sidebar or source control is taken over into a multi-tab editor view (Markdown/HTML/PDF/image previews, 15-language syntax highlighting, hunk-level diff editing, Ctrl+S save), with file operations (new/move/copy/delete, reveal in file explorer), a collapsible icon rail, a multi-tab bottom terminal (ConPTY) and AI commit messages from a host-configured model.",
-  "version": "1.0.3",
+  "version": "1.0.3-xiaopb.2",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -35,7 +35,9 @@
     "clean": "node -e \"const fs=require('node:fs');fs.rmSync('lib',{recursive:true,force:true});for(const f of ['tsconfig.host.tsbuildinfo','tsconfig.client.tsbuildinfo'])fs.rmSync(f,{force:true})\"",
     "build": "pnpm run clean && node scripts/gen-pdfjs-assets.mjs && tsc -b && tsdown",
     "prepare": "node scripts/gen-pdfjs-assets.mjs && tsdown",
-    "watch": "tsdown --watch"
+    "watch": "tsdown --watch",
+    "check": "node --check lib/index.js && node --check lib/client.js && node scripts/verify-package.mjs",
+    "prepack": "node scripts/verify-package.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
