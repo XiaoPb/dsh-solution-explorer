@@ -78,15 +78,27 @@ function previewState(tab: EditorTab | null): { renderer: PreviewKind | null; pr
 
 /** Bring the editor view forward in the host's own view tabs. */
 function focusEditorView(): void {
-  setTimeout(() => {
-    const label = t("panel.editor");
+  // One attempt is not enough on a phone: the click lands ~50ms after the
+  // open, while the fullscreen sheet collapse is still re-rendering the
+  // conversation header — the view-tab strip can remount right under the
+  // clicked node and the switch silently no-ops. Retry until the strip
+  // carries the editor tab AND it reads as selected, then stop.
+  const label = t("panel.editor");
+  let attempts = 0;
+  const tick = () => {
+    attempts += 1;
     const tab = Array.from(document.querySelectorAll('[role="tab"]')).find((el) => {
       // Our own strip also exposes role=tab; only the host's view tab counts.
       if (el.closest(".sol-exp-etabs") !== null) return false;
       return el.textContent === label;
     }) as HTMLElement | null;
-    if (tab) tab.click();
-  }, 50);
+    if (tab) {
+      if (tab.getAttribute("aria-selected") !== "true") tab.click();
+      return;
+    }
+    if (attempts < 25) setTimeout(tick, 120);
+  };
+  setTimeout(tick, 50);
 }
 
 /**
