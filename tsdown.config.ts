@@ -9,9 +9,16 @@
  * @module dsh-solution-explorer/tsdown
  */
 import { defineConfig } from 'tsdown'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const PKG_ID = 'dsh-solution-explorer'
+// The ModuleLoader registers/looks client bundles up by package name, so the
+// registration id MUST equal package.json's `name` (including the npm scope).
+// Deriving it here — instead of hardcoding — keeps fork builds with a scoped
+// name (@xiaopb/...) loadable; a mismatch makes the loader treat the batch as
+// "loaded without registering", re-import the bundle solo, and then fail with
+// a duplicate-factory error.
+const PKG_ID = (JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')) as { name: string }).name
 
 // pptx-preview's uuid build requires `node:crypto` at module scope; the DSH
 // module loader has no seed word for it, so it is aliased to a Web Crypto shim.

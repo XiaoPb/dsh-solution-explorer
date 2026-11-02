@@ -86,6 +86,12 @@ for (const marker of ['solutionExplorer', 'sol-exp-', 'sidebarRightTabs']) {
   check(client.includes(marker), `bundle 含标记 ${marker}`)
 }
 check(!/^\s*import\s+/m.test(client), 'bundle 不用 ESM import（走 loader 注入的 require）')
+// 关键不变量：ModuleLoader 用包名作为模块 id 查找/去重，bundle 注册 id 必须
+// 与 package.json name 完全一致（含 scope）。不一致时：批次脚本执行后按包名
+// 找不到 factory → loader 判定“加载未注册”并单资源重试 → 同一 bundle 第二次
+// 执行触发 duplicate factory registration，插件永远无法激活。
+const registeredId = client.match(/__ModuleLoader__\s*\.\s*load\(\{[^}]{0,300}?id:\s*["']([^"']+)["']/)?.[1]
+check(registeredId === pkg.name, `客户端注册 id 与包名一致（${registeredId ?? '未找到'} = ${pkg.name}）`)
 
 // ---- 6. 宿主入口 ----
 const host = require(path.join(root, 'lib', 'index.js'))
