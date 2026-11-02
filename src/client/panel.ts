@@ -62,6 +62,15 @@ export function mountPanel(ctx: ClientContext): void {
 
 				const state = createInitialState();
 
+				// Portrait phone: boot to the main page. The sheet starts
+				// folded — only an explicit open (rail tap, edge swipe, the
+				// native-rightbar button) unfolds it. Without this the
+				// auto-open width default reads as "open" on the phone, the
+				// fullscreen sheet covers the chat on first install, and any
+				// later grid resync (e.g. the mobile-layout drawer opening or
+				// closing) re-asserts it over the main interface.
+				if (isPortraitPhone()) state.layout.panelCollapsed = true;
+
 
 
 

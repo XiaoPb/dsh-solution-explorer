@@ -67,7 +67,11 @@ function touchScrollerConsumes(target: EventTarget | null): boolean {
   while (node !== null) {
     if (node.scrollWidth > node.clientWidth + 1 && node.clientWidth > 0) {
       const ov = getComputedStyle(node).overflowX
-      if (ov === 'auto' || ov === 'scroll' || ov === 'hidden') return true
+      // Only auto/scroll really pan horizontally. `hidden` merely clips —
+      // decorative wrappers on the main page (shadow strips, absolutely
+      // positioned chrome) overflow by a few px under hidden and must not
+      // swallow the right-edge open gesture there.
+      if (ov === 'auto' || ov === 'scroll') return true
     }
     node = node.parentElement
   }
