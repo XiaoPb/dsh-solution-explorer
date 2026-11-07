@@ -677,6 +677,10 @@ export function mountPanel(ctx: ClientContext): void {
 
 					state.layout.mountObs?.disconnect();
 
+					for (const dispose of state.layout.gestureDisposers) dispose();
+
+					state.layout.gestureDisposers = [];
+
 					if (state.layout.panelFrame !== null && state.layout.panelCol !== null) state.layout.panelCol.remove();
 
 					terminal.dispose();

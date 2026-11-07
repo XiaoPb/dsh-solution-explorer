@@ -44,7 +44,8 @@
     "prepare": "node scripts/gen-pdfjs-assets.mjs && tsdown",
     "watch": "tsdown --watch",
     "check": "node --check lib/index.js && node --check lib/client.js && node scripts/verify-package.mjs",
-    "prepack": "node scripts/verify-package.mjs"
+    "prepack": "node scripts/verify-package.mjs",
+    "test": "node --test test/*.test.ts"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

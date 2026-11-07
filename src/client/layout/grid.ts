@@ -7,6 +7,7 @@ import type { AppState } from "../state/store.ts"
 import { commands } from '../commands.ts'
 import { resolveShellGrid } from "./grid-find.ts"
 import { bindPanelSwipe, bindEdgeSwipeOpen } from "../touch/gestures.ts"
+import { canOwnEdgeOpen, canOwnPanelSwipe } from "../touch/gesture-guard.ts"
 import { isPortraitPhone } from "../touch/form-factor.ts"
 
 /** Panel width bounds and collapsed rail width (mirrors panel.ts constants). */
@@ -108,12 +109,6 @@ export function applyGrid({ state }: { state: AppState }): void {
 							// overrides our 0px), and that empty strip paints as
 							// a dead white band on the right edge.
 							col.style.display = open ? "flex" : "none";
-							// While the sheet is up, touches inside it must not feed
-							// dsh-mobile-layout's window-level drawer gesture — its
-							// escape hatch for fullscreen third-party pages is this
-							// attribute, checked via closest() at gesture start.
-							if (open) col.setAttribute("data-dshm-swipe-ignore", "");
-							else col.removeAttribute("data-dshm-swipe-ignore");
 							if (open) {
 								col.style.visibility = "visible";
 								col.style.position = "fixed";
@@ -215,6 +210,15 @@ export function mountColumn({ state, render, applySettings }: GridDeps): void {
 
 					state.layout.panelCol.style.borderLeft = "1px solid var(--dsw-alias-border-l2, #333)";
 
+					// Escape hatch for dsh-mobile-layout, which reads it with
+					// closest() at gesture start: horizontal swipes inside this
+					// column belong to us. Carried *always*, not only while the
+					// phone sheet is up — on a wide layout the plugin's left-half
+					// swipe would otherwise fold the shell sidebar when the user
+					// swipes inside our panel. The column is display:none while
+					// folded on a phone, so nothing changes there.
+					state.layout.panelCol.setAttribute("data-dshm-swipe-ignore", "");
+
 					frame.appendChild(state.layout.panelCol);
 
 					state.activeEl = state.layout.panelCol;
@@ -235,19 +239,35 @@ export function mountColumn({ state, render, applySettings }: GridDeps): void {
 					// Observe-only (passive); the mobile layout plugin's own
 					// left-edge drawer keeps precedence — its zone is the screen's
 					// left edge, ours is the right.
-					bindPanelSwipe(state.layout.panelCol, {
-						enabled: () => true,
-						collapsed: () => state.layout.panelCollapsed,
-						onCollapse: () => { if (!state.layout.panelCollapsed && (state.layout.panelWidth > 0 || isPortraitPhone())) commands.togglePanel?.() },
-						onExpand: () => { if (state.layout.panelCollapsed) commands.railOpen?.(state.currentTab) },
-					});
-
-					bindEdgeSwipeOpen({
-						enabled: () => isPortraitPhone(),
-						collapsed: () => state.layout.panelCollapsed,
-						onCollapse: () => {},
-						onExpand: () => { if (state.layout.panelCollapsed) commands.railOpen?.(state.currentTab) },
-					});
+					//
+					// Both binders carry an arbitration gate: the open gesture only
+					// runs on the conversation page with nothing on top of it (the
+					// left drawer, a sheet, a picker, the native right column in
+					// fullscreen), and the fold gesture yields to inputs, scrollers
+					// that can still pan, and this plugin's own overlays. Without
+					// the open gate one swipe closed the drawer *and* opened the
+					// sheet — two actions, one finger.
+					//
+					// Disposers are kept: the shell can tear the column down and
+					// re-mount it, and leaking a document-level capture listener
+					// per mount means several trackers deciding on one touch.
+					const gestureDisposers = [
+						bindPanelSwipe(state.layout.panelCol, {
+							enabled: () => true,
+							collapsed: () => state.layout.panelCollapsed,
+							allowed: (_x, _y, target) => canOwnPanelSwipe(target),
+							onCollapse: () => { if (!state.layout.panelCollapsed && (state.layout.panelWidth > 0 || isPortraitPhone())) commands.togglePanel?.() },
+							onExpand: () => { if (state.layout.panelCollapsed) commands.railOpen?.(state.currentTab) },
+						}),
+						bindEdgeSwipeOpen({
+							enabled: () => isPortraitPhone(),
+							collapsed: () => state.layout.panelCollapsed,
+							allowed: (x, y, target) => canOwnEdgeOpen(x, y, target),
+							onCollapse: () => {},
+							onExpand: () => { if (state.layout.panelCollapsed) commands.railOpen?.(state.currentTab) },
+						}),
+					];
+					state.layout.gestureDisposers = gestureDisposers;
 
 					state.layout.resizeHandle = document.createElement("div");
 

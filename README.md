@@ -74,6 +74,12 @@
 - **File operations** — context menu with new file/folder, delete (confirm
   dialog), copy / cut / paste, copy relative / absolute path; drag files within
   the tree, drag files in from the OS, multi-select bulk actions.
+- **Touch gestures** — on a phone, swipe inward from the right edge of the
+  **conversation** to open the sheet, swipe right on it to go back. The gesture
+  yields to anything that already owns the screen: the left drawer (open or
+  animating), bottom sheets, the model picker, the settings page, menus, modals
+  and the native right column in fullscreen. Swipes inside scrollers that still
+  have room to pan are left alone. One swipe never does two things.
 - **i18n** — English and Chinese, follows the browser language.
 - **Dark theme** — matches the DSH Web UI tokens.
 

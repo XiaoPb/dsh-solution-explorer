@@ -44,13 +44,40 @@ function serviceOf(get: ServiceGetter | undefined): SidebarRightFace | undefined
 }
 
 /**
- * The native column's DOM truth: `data-sidebar-right-open` on the official
- * panel. `null` when the panel is not mounted (store is the only witness —
- * and a stale one, per the module comment).
+ * Whether the official panel actually occupies the screen.
+ *
+ * `data-sidebar-right-open` alone is not enough: on a narrow viewport the
+ * panel node stays mounted while the column folds to zero width (the shell
+ * writes `display:none` on it), so the attribute flips to "open" for a panel
+ * nobody can see. Measured geometry is the only witness of a visible column.
+ */
+function panelVisible(): boolean {
+  const panel = document.querySelector("[data-sidebar-right-panel]")
+  if (!(panel instanceof HTMLElement)) return false
+  if (getComputedStyle(panel).display === "none") return false
+  return panel.getBoundingClientRect().width >= 1
+}
+
+/**
+ * The native column's DOM truth: `data-sidebar-right-open` on a panel that is
+ * really laid out. `null` when the panel is not mounted (store is the only
+ * witness — and a stale one, per the module comment).
  */
 function domOpen(): boolean | null {
   const panel = document.querySelector("[data-sidebar-right-panel]")
-  return panel instanceof HTMLElement ? panel.hasAttribute("data-sidebar-right-open") : null
+  if (!(panel instanceof HTMLElement)) return null
+  if (!panel.hasAttribute("data-sidebar-right-open")) return false
+  return panelVisible()
+}
+
+/** The store's idea of the open state, or `null` when it cannot be asked. */
+function readStore(face: SidebarRightFace | undefined): boolean | null {
+  if (face?.isExpanded === undefined) return null
+  try {
+    return Boolean(face.isExpanded())
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -99,17 +126,59 @@ function clickOfficialToggle(selector: string): boolean {
 }
 
 /**
+ * Fold the column and reopen it on the next frame.
+ *
+ * Used whenever the store claims "expanded" while nothing is on screen: two
+ * `toggleExpanded()` calls inside one event would be batched by React into
+ * "still expanded" and produce no render at all, so the second one has to
+ * land in a later task. The frame also lets the shell re-run its fullscreen
+ * presentation, which is what actually paints the column on a phone.
+ */
+function reopenNextFrame(face: SidebarRightFace | undefined): void {
+  const toggle = face?.toggleExpanded
+  if (toggle === undefined) {
+    clickOfficialToggle("[data-sidebar-right-expand]")
+    return
+  }
+  try {
+    toggle()
+  } catch {
+    return
+  }
+  requestAnimationFrame(() => {
+    try {
+      toggle()
+    } catch {
+      /* left folded: the next tap runs this again */
+    }
+  })
+}
+
+/**
  * Open the native right column, closing this plugin's sheet first: on a
  * portrait phone the two are both fullscreen, so only one may stand.
  * Falls back to the official header button when the service face is absent.
  * @returns true when an open was triggered.
  */
 export function openNativeRightbar(get: ServiceGetter | undefined): boolean {
-  if (isPortraitPhone() && !stateWantsPanelClosed()) commands.togglePanel?.()
+  if (isPortraitPhone() && panelIsOpen()) commands.togglePanel?.()
   const face = serviceOf(get)
-  const current = alignStore(face)
-  if (current === null) return clickOfficialToggle("[data-sidebar-right-expand]")
-  if (current) return true
+  const dom = domOpen()
+  if (dom === null) return clickOfficialToggle("[data-sidebar-right-expand]")
+  if (dom) {
+    // Painted and fullscreen: nothing to do.
+    if (nativeRightbarFullscreen()) return true
+    // Laid out but not presented fullscreen yet — same batched-toggle trap.
+    reopenNextFrame(face)
+    return true
+  }
+  if (readStore(face) === true) {
+    // Stale `expanded`: the persisted store survived a cold start (or a switch
+    // away from the conversation view) while the column was folded. Reset it
+    // now and reopen on the next frame; a single toggle here would be a no-op.
+    reopenNextFrame(face)
+    return true
+  }
   try {
     face?.toggleExpanded?.()
     return true
@@ -160,11 +229,45 @@ export function closeNativeRightbar(get: ServiceGetter | undefined): void {
 }
 
 /**
- * Whether this plugin's sheet should stay closed — read through the command
- * registry so the module never imports panel state directly.
+ * Whether this plugin's sheet is standing — read through the command
+ * registry so the module never imports panel state directly. `undefined`
+ * (registry not bound yet) reads as "not open": guessing "open" here would
+ * fold a sheet the user never opened.
  */
-function stateWantsPanelClosed(): boolean {
-  return commands.panelClosed?.() === true
+function panelIsOpen(): boolean {
+  return commands.panelClosed?.() === false
+}
+
+/**
+ * Keep the official "open right sidebar" entry reachable while the column is
+ * not on screen.
+ *
+ * The shell renders that button `disabled` and `visibility:hidden` for as
+ * long as the store says `expanded` — including the stale folded state where
+ * the panel is `display:none`. A disabled button dispatches no click at all,
+ * so without this the stale flag can never be dropped and the entry is gone
+ * for good. Only the folded case is touched: once the column is really
+ * painted, the shell's own hidden/disabled treatment is restored.
+ */
+function ensureEntry(): void {
+  if (!isPortraitPhone()) return
+  const panel = document.querySelector("[data-sidebar-right-panel]")
+  if (panel instanceof HTMLElement && panel.hasAttribute("data-sidebar-right-open") && getComputedStyle(panel).display === "none") {
+    // A folded panel keeps an inline `display:none` after the column was torn
+    // down to zero width; the shell expresses folding with visibility and
+    // transform, never with display, so this one is a leftover that would keep
+    // a logically-open column invisible forever. Dropping it is safe: the open
+    // attribute is the shell's own statement that the panel should be shown.
+    panel.style.removeProperty("display")
+  }
+  const button = document.querySelector("[data-sidebar-right-expand]")
+  if (!(button instanceof HTMLButtonElement)) return
+  if (panelVisible() && nativeRightbarFullscreen()) {
+    if (button.style.visibility === "visible") button.style.visibility = ""
+    return
+  }
+  if (button.disabled) button.disabled = false
+  if (button.style.visibility !== "visible") button.style.visibility = "visible"
 }
 
 /**
@@ -189,7 +292,34 @@ export function bindNativeRightbar(get: ServiceGetter | undefined): () => void {
     openNativeRightbar(get)
   }
   document.addEventListener("click", onClick, { capture: true })
+
+  // The shell re-renders the header on every session/layout change and writes
+  // `disabled` back on the entry each time. Re-check after the fact instead of
+  // guessing when that render lands; the throttle keeps a streaming transcript
+  // (which mutates the DOM constantly) from paying for a layout read per frame.
+  let scheduled = false
+  let lastRun = 0
+  const scheduleEnsure = (): void => {
+    if (scheduled) return
+    scheduled = true
+    const wait = Math.max(0, 200 - (performance.now() - lastRun))
+    setTimeout(() => {
+      scheduled = false
+      lastRun = performance.now()
+      ensureEntry()
+    }, wait)
+  }
+  const observer = new MutationObserver(scheduleEnsure)
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled", "data-sidebar-right-open", "data-rightbar-fullscreen"],
+  })
+  ensureEntry()
+
   return () => {
+    observer.disconnect()
     document.removeEventListener("click", onClick, { capture: true } as EventListenerOptions)
     delete commands.closeNativeRightbar
   }

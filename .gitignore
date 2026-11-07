@@ -21,3 +21,6 @@ Thumbs.db
 
 # Local scratch (CDP probes etc.)
 .scratch/
+
+# WorkBuddy workspace scratch (local CDP probes, memory)
+.workbuddy/

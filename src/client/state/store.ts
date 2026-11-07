@@ -116,6 +116,8 @@ export interface LayoutState {
   sizeObs: any
   resizeHandle: any
   mountObs: any
+  /** Teardown for the column's touch gestures (touchend/touchmove listeners). */
+  gestureDisposers: Array<() => void>
 }
 
 export interface TerminalState {
@@ -265,6 +267,7 @@ export function createInitialState(): AppState {
       sizeObs: null,
       resizeHandle: null,
       mountObs: null,
+      gestureDisposers: [],
     },
     terminal: {
       terminalOpen: false,
