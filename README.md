@@ -4,8 +4,8 @@
 
 **A drop-in replacement for the DSH Web GUI's right sidebar** — VS Code-style file explorer, a multi-tab editor with in-place previews, and full source control.
 
-[![npm](https://img.shields.io/npm/v/dsh-solution-explorer)](https://www.npmjs.com/package/dsh-solution-explorer)
-[![npm downloads](https://img.shields.io/npm/dm/dsh-solution-explorer)](https://www.npmjs.com/package/dsh-solution-explorer)
+[![npm](https://img.shields.io/npm/v/%40xiaopb%2Fdsh-solution-explorer)](https://www.npmjs.com/package/@xiaopb/dsh-solution-explorer)
+[![npm downloads](https://img.shields.io/npm/dm/%40xiaopb%2Fdsh-solution-explorer)](https://www.npmjs.com/package/@xiaopb/dsh-solution-explorer)
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 [![dshfind](https://dshfind.com/api/badge/xiaoksio/dsh-solution-explorer?lang=zh)](https://dshfind.com/zh/plugins/xiaoksio/dsh-solution-explorer?ref=badge)
 [![license](https://img.shields.io/github/license/xiaoksio/dsh-solution-explorer)](LICENSE)

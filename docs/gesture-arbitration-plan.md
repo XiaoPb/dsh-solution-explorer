@@ -523,7 +523,7 @@ swipe(340, 500, 200, 500)（工作台已关）→ assert col.display !== 'none'�
 | 2 | 状态机改造（arm/move/cancel/冷却/多指）+ 横滚方向感知 | 6.2 全表 + 6.3 全表通过；单元 6.1 全绿 |
 | 3 | `data-dshm-swipe-ignore` 常驻 + disposer 归位 + 起手区取宽修正 | 6.2-9 与 6.3-W5 通过；卸载/热重载无残留监听 |
 | 4 | 可选：抽屉动画冷却、README 手势说明 | 6.2-2 手感验收；6.5 的「单手势结构性变化 ≤ 1」断言全绿 |
-| 5 | 发版：`package.json` → `1.0.3-xiaopb.6`；tag `v1.0.3-xiaopb.6` 触发 `release.yml`（npm + GitHub Release） | registry 可见 `1.0.3-xiaopb.6` |
+| 5 | 发版：`package.json` → `1.0.4`；tag `v1.0.4` 触发 `release.yml`（npm + GitHub Release） | registry 可见 `1.0.4`（**实际执行：已完成，见 §10**） |
 
 建议阶段 1+2 合并成一次提交（`fix(gesture): 右缘开板只在会话页面生效，左侧栏与浮层一律不接管`），阶段 3 单独一次（`fix(gesture): 面板列常驻 swipe-ignore，修正监听器摘除`）。
 
@@ -684,3 +684,24 @@ A4 的结论：这台 AVD 当前跑的是 ml 的 **v2 预设**，会话入口是
 | V5 | 按钮 disabled 且面板不可见 | `ensureEntry` 把 `disabled` 置 false、`visibility` 置 visible，入口重新可点 ✅ |
 
 `adb shell input tap` 的坐标换算在本机不可靠（WebView 有 0.9 缩放 + 顶部 63px 偏移），最终用 CDP `Input.dispatchMouseEvent` 以 CSS 坐标点击才稳定复现；建议后续手势回归也用这条路。
+
+---
+
+## 10. 发版记录（1.0.4）
+
+| 项目 | 值 |
+| --- | --- |
+| 包版本 | `@xiaopb/dsh-solution-explorer@1.0.4`（`package.json` 去掉 `-xiaopb.N` 后缀，转正式版） |
+| Git tag | `v1.0.4`（指向 `71b899f`，与 `package.json` 版本严格一致，`release.yml` 的 tag 校验通过） |
+| 发布方式 | `release.yml` → npm（NPM_TOKEN）+ GitHub Release（tarball + `.sha256`） |
+| npm dist-tag | `latest = 1.0.4` |
+| Release | https://github.com/XiaoPb/dsh-solution-explorer/releases/tag/v1.0.4 |
+| 前置自检 | `npm run build` / `npm run check`（`verify-package` ALL PASS）/ `npm test`（12/12）全绿 |
+
+**版本号注意事项（下次发版前必读）**
+
+1. 本仓历史版本是 `1.0.3-xiaopb.1 … .5`，`-xiaopb.N` 是**预发布后缀**：SemVer 里 `1.0.4-xiaopb.1 < 1.0.4`。既然 `1.0.4`（正式版）已发布，**下一个 fork 构建不能再用 `1.0.4-xiaopb.1`**——那会被 npm 与 `dsh plugin add pkg@latest` 判定为降级。下一条线从 `1.0.5`（或 `1.0.5-xiaopb.1`）起。
+2. `release.yml` 的唯一硬约束是 **tag 必须等于 `v` + `package.json` 的 `version`**（`Resolve version and check the tag` 步骤，不匹配直接 fail）。改版本只改 `package.json` 一处，tag 由它派生，别手工造 tag。
+3. 包里没有第二处版本号：`cordis.patch.yml`、`lib/`、lockfile 都不写自身版本；`dsh.compatibility.dshReleases` 记的是**宿主 DSH 版本**，与本包版本无关，发版时不要动。
+4. 发布后核对三件事：`npm view @xiaopb/dsh-solution-explorer dist-tags`（`latest` 是否指向新版本）、Release 是否 `draft=false / prerelease=false` 且附件齐全、`npm pack <版本>` 解开后 `package.json` 的 version 与产物内 `lib/client.js` 含本次改动标记（本次已验证 `sol-exp-debug` / `canOwnEdgeOpen` / `panelIsOpen` 均在）。
+5. npm 上本包还存在一个 `1.0.3`（无后缀）——那是上游正式版的镜像发布，与本 fork 的 `1.0.3-xiaopb.N` 版本线互不覆盖；升级判断以 `latest` dist-tag 为准，本次它已指向 `1.0.4`。

@@ -4,8 +4,8 @@
 
 **DSH Web GUI 右侧边栏的完美平替** —— VS Code 风格文件浏览器、带就地预览的多标签编辑器，以及完整源代码管理。
 
-[![npm](https://img.shields.io/npm/v/dsh-solution-explorer)](https://www.npmjs.com/package/dsh-solution-explorer)
-[![npm 下载量](https://img.shields.io/npm/dm/dsh-solution-explorer)](https://www.npmjs.com/package/dsh-solution-explorer)
+[![npm](https://img.shields.io/npm/v/%40xiaopb%2Fdsh-solution-explorer)](https://www.npmjs.com/package/@xiaopb/dsh-solution-explorer)
+[![npm 下载量](https://img.shields.io/npm/dm/%40xiaopb%2Fdsh-solution-explorer)](https://www.npmjs.com/package/@xiaopb/dsh-solution-explorer)
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 [![dshfind](https://dshfind.com/api/badge/xiaoksio/dsh-solution-explorer?lang=zh)](https://dshfind.com/zh/plugins/xiaoksio/dsh-solution-explorer?ref=badge)
 [![license](https://img.shields.io/github/license/xiaoksio/dsh-solution-explorer)](LICENSE)
