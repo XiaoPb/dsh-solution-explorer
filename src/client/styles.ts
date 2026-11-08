@@ -78,6 +78,7 @@ body {
 .sol-exp-mobilehead { display:none; }
 
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-panel {
+  height:var(--sol-exp-vv-height, 100%);
   box-sizing:border-box;
   padding-bottom:var(--sol-exp-safe-bottom);
 }
@@ -308,7 +309,7 @@ body {
 
 .sol-exp-body { flex:1; min-height:0; display:flex; }
 
-.sol-exp-activity { flex:none; display:flex; flex-direction:row; align-items:stretch; padding:0 var(--sol-exp-space-6); gap:var(--sol-exp-space-2); border-bottom:var(--sol-exp-border); background:var(--sol-exp-chrome-bg); height:var(--sol-exp-row-height); }
+.sol-exp-activity { flex:none; display:flex; flex-direction:row; align-items:stretch; box-sizing:border-box; padding:0 var(--sol-exp-space-6); gap:var(--sol-exp-space-2); border-bottom:var(--sol-exp-border); background:var(--sol-exp-chrome-bg); height:var(--sol-exp-row-height); }
 
 .sol-exp-activity-btn { position:relative; flex:none; width:var(--sol-exp-control-size); height:var(--sol-exp-control-size); display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:var(--sol-exp-label-tertiary); cursor:pointer; border-radius:var(--sol-exp-radius); padding:0; margin:auto 0; touch-action:manipulation; }
 
@@ -655,23 +656,51 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
 /* The information header owns the close affordance on a phone. */
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-panel-toggle { display: none; }
 
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-header {
-  height: var(--sol-exp-row-height);
-  justify-content: flex-end;
+/* Phone actions move to the bottom bar; the top view header is redundant. */
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-header { display: none; }
+
+/* ── Phone bottom action bar ─────────────────────────────────────────────
+   Explorer/SCM actions in the thumb zone. Hidden on desktop and on the
+   search tab (whose only control is the query input). */
+.sol-exp-actionbar { display:none; }
+
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-actionbar {
+  flex:none;
+  display:flex;
+  align-items:center;
+  gap:var(--sol-exp-space-2);
+  height:var(--sol-exp-touch-target);
+  padding:0 var(--sol-exp-space-6);
+  box-sizing:border-box;
+  background:var(--sol-exp-chrome-bg);
+  border-top:var(--sol-exp-border);
 }
 
-/* The workspace name already lives in the information header. */
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-header .sol-exp-title { display: none; }
-
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-toolbar-btn {
-  width: var(--sol-exp-control-size);
-  height: var(--sol-exp-control-size);
-  min-width: var(--sol-exp-control-size);
-  min-height: var(--sol-exp-control-size);
+.sol-exp-actionbar-btn {
+  flex:none;
+  width:var(--sol-exp-touch-target);
+  height:var(--sol-exp-touch-target);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:none;
+  border-radius:var(--sol-exp-radius);
+  background:transparent;
+  color:var(--sol-exp-label-secondary);
+  cursor:pointer;
+  touch-action:manipulation;
 }
 
-/* Search row has no actions; let the input sit directly under the title bar. */
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-search-panel > .sol-exp-header { display: none; }
+.sol-exp-actionbar-btn:hover {
+  background:var(--sol-exp-hover-bg);
+  color:var(--sol-exp-label-primary);
+}
+
+.sol-exp-actionbar-btn:focus-visible {
+  outline:var(--sol-exp-focus-width) solid var(--sol-exp-focus-color);
+  outline-offset:var(--sol-exp-focus-offset);
+}
 
 /* ── Toast ────────────────────────────────────────────────────────────────
    Extracted from shared/ui.ts inline styles so its position can use the same

@@ -62,6 +62,26 @@ export function mountPanel(ctx: ClientContext): void {
 
 				const state = createInitialState();
 
+				// Keep a phone sheet inside the visual viewport while the soft
+				// keyboard is up. The CSS consumes --sol-exp-vv-height; values are
+				// refreshed on viewport resize/scroll and whenever the sheet opens.
+				const visualViewport = window.visualViewport;
+				const syncViewport = () => {
+					if (!isPortraitPhone() || state.layout.panelCol === null) return;
+					const vvHeight = visualViewport?.height ?? window.innerHeight;
+					const height = Math.round(Math.min(vvHeight, window.innerHeight));
+					const top = Math.round(visualViewport?.offsetTop ?? 0);
+					state.layout.panelCol.style.setProperty("--sol-exp-vv-height", height + "px");
+					state.layout.panelCol.style.setProperty(
+						"--sol-exp-keyboard-inset",
+						Math.max(0, Math.round(window.innerHeight - height - top)) + "px",
+					);
+				};
+				visualViewport?.addEventListener("resize", syncViewport);
+				visualViewport?.addEventListener("scroll", syncViewport);
+				window.addEventListener("resize", syncViewport);
+				syncViewport();
+
 				// Portrait phone: boot to the main page. The sheet starts
 				// folded — only an explicit open (rail tap, edge swipe, the
 				// native-rightbar button) unfolds it. Without this the
@@ -266,6 +286,8 @@ export function mountPanel(ctx: ClientContext): void {
 
 					applyGrid(gridDeps);
 
+					syncViewport();
+
 					// Portrait exclusivity: the native right column is a second
 					// fullscreen sheet — it must not stand while ours does.
 					commands.closeNativeRightbar?.();
@@ -383,6 +405,8 @@ export function mountPanel(ctx: ClientContext): void {
 
 						applyGrid(gridDeps);
 
+						syncViewport();
+
 						// Portrait exclusivity: fold the native right column
 						// before this sheet covers the screen.
 						commands.closeNativeRightbar?.();
@@ -402,6 +426,8 @@ export function mountPanel(ctx: ClientContext): void {
 					render();
 
 					applyGrid(gridDeps);
+
+					syncViewport();
 
 				};
 
@@ -695,6 +721,10 @@ export function mountPanel(ctx: ClientContext): void {
 					document.removeEventListener("drop", dragGuard);
 
 					window.removeEventListener("sol-exp-settings-saved", applySettings);
+
+					visualViewport?.removeEventListener("resize", syncViewport);
+					visualViewport?.removeEventListener("scroll", syncViewport);
+					window.removeEventListener("resize", syncViewport);
 
 					clearInterval(autoRefreshTimer);
 

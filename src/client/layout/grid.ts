@@ -139,6 +139,22 @@ export function applyGrid({ state }: { state: AppState }): void {
 						return;
 					}
 
+					// Rotation / wide layout: undo the inline fullscreen-sheet
+					// styles, otherwise a sheet opened in portrait stays
+					// position:fixed over the landscape grid.
+					if (state.layout.panelCol !== null) {
+						const col = state.layout.panelCol;
+						col.style.display = "flex";
+						col.style.position = "relative";
+						col.style.inset = "";
+						col.style.width = "";
+						col.style.height = "";
+						col.style.borderLeft = "1px solid var(--dsw-alias-border-l2, #333)";
+						col.style.zIndex = "11";
+						col.style.removeProperty("--sol-exp-vv-height");
+						col.style.removeProperty("--sol-exp-keyboard-inset");
+					}
+
 					// Folded: the column keeps a fixed narrow rail (mirrors the
 					// native collapsed sidebar); expanded it uses the width
 					// preference.

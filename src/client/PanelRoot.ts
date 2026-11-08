@@ -26,6 +26,7 @@ import type { SearchActions } from './explorer/SearchPanel.ts'
 import { ScmPanel } from './scm/ScmPanel.ts'
 import type { ScmActions } from './scm/ScmPanel.ts'
 import { ContextMenu } from './explorer/ContextMenu.ts'
+import { MobileActionBar } from './layout/MobileActionBar.ts'
 import { MobileHeader } from './layout/MobileHeader.ts'
 import type { AppState } from './state/store.ts'
 
@@ -124,6 +125,7 @@ export function PanelRoot({ state, actions }: PanelRootProps): ReactNode {
       h(ActivityBar, { state, actions }),
       h('div', { className: 'sol-exp-body' },
         h('div', { className: 'sol-exp-main' }, content)),
+      h(MobileActionBar, { state, actions }),
     ),
     state.contextMenu
       ? createPortal(
