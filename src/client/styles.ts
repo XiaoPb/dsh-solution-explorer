@@ -567,10 +567,12 @@ body {
 .sol-exp-scm-section:not(.collapsed) > .sol-exp-scm-section-header > svg:first-child,
 .sol-exp-scm-subsection:not(.collapsed) > .sol-exp-scm-subsection-header > svg:first-child { transform: rotate(90deg); }
 .sol-exp-branch-pill { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px; box-sizing:border-box; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); font-size:11px; font-weight:500; color:var(--dsw-alias-label-primary); }
-.sol-exp-commit-item { display:flex; align-items:center; gap:6px; min-width:0; min-height:28px; padding:0 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; }
-.sol-exp-commit-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
-.sol-exp-commit-item.selected { background:var(--dsw-alias-interactive-bg-active); }
+.sol-exp-commit-item { display:flex; align-items:center; gap:6px; min-width:0; min-height:28px; padding:0 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; --sol-exp-graph-bg:var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-layer-2)); }
+.sol-exp-commit-item:hover { background:var(--dsw-alias-interactive-bg-hover); --sol-exp-graph-bg:var(--dsw-alias-interactive-bg-hover); }
+.sol-exp-commit-item.selected { background:var(--dsw-alias-interactive-bg-active); --sol-exp-graph-bg:var(--dsw-alias-interactive-bg-active); }
 .sol-exp-graph-svg { flex:none; display:block; }
+.sol-exp-graph-node { stroke:var(--sol-exp-graph-bg); }
+.sol-exp-graph-head-inner { fill:var(--sol-exp-graph-bg); }
 .sol-exp-commit-hash { font-family:monospace; font-size:11px; color:var(--dsw-alias-label-tertiary); flex:none; }
 .sol-exp-commit-msg { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--dsw-alias-label-primary); }
 .sol-exp-commit-date { flex:none; font-size:11px; color:var(--dsw-alias-label-tertiary); }

@@ -7,159 +7,231 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { planGraph } from '../src/client/scm/graph.ts'
-import type { GraphLaneDraw, GraphRowDraw } from '../src/client/scm/graph.ts'
+import { graphColumnWidth, planGraph } from '../src/client/scm/graph.ts'
+import type { GraphRowDraw } from '../src/client/scm/graph.ts'
+import { laneCountWidth, SWIMLANE_WIDTH } from '../src/client/scm/graph-path.ts'
 import type { CommitRow } from '../src/client/state/store.ts'
+import { avd, diamond, linear, row } from './graph-fixture.ts'
 
-/** Lane width used by graph.ts; every coordinate must be a multiple of it. */
-const LANE_W = 11
 const HEX = /^#[0-9a-f]{6}$/i
+/** VS Code's `historyItemRefColor` (chartsBlue): the checked-out branch lane. */
+const REF = '#3794FF'
+const AMBER = '#FFB000'
+const PINK = '#DC267F'
+const BROWN = '#994F00'
+const TEAL = '#40B0A6'
+const PURPLE = '#B66DFF'
 
-function row(hash: string, parents: string[] = [], extra: Partial<CommitRow> = {}): CommitRow {
-  return { hash, shortHash: hash.slice(0, 7), message: `subject ${hash}`, timestamp: 0, parents, ...extra }
+function parentIds(rows: readonly CommitRow[]): string[][] {
+  return rows.map((r) => r.parents ?? [])
 }
 
-function graphNumbers(plans: readonly GraphRowDraw[]): number[] {
-  const nums: number[] = []
-  for (const plan of plans) {
-    nums.push(plan.width)
-    for (const tr of plan.transitions) nums.push(tr.x1, tr.x2)
-    for (const lane of plan.lanes) {
-      nums.push(lane.x)
-      for (const fork of lane.forks) nums.push(fork.x)
-    }
-  }
-  return nums
-}
+/** Invariants every plan must satisfy, whatever the history. */
+function assertSane(rows: readonly CommitRow[], plans: readonly GraphRowDraw[]): void {
+  assert.equal(plans.length, rows.length, 'one plan per commit row')
+  const parents = parentIds(rows)
 
-function nodeLane(plan: GraphRowDraw): GraphLaneDraw {
-  const nodes = plan.lanes.filter((lane) => lane.node)
-  assert.equal(nodes.length, 1, 'every row has exactly one node lane')
-  return nodes[0]
-}
+  plans.forEach((plan, index) => {
+    assert.equal(plan.hash, rows[index].hash)
+    assert.equal(plan.width, laneCountWidth(Math.max(plan.input.length, plan.output.length)),
+      'the row is as wide as its widest lane set, plus one lane')
+    assert.equal(plan.width % SWIMLANE_WIDTH, 0, 'width is a whole number of lanes')
+    assert.match(plan.color, HEX, 'the node color is a hex color')
 
-/** Shape invariants every plan must satisfy, whatever the history. */
-function assertSane(plans: readonly GraphRowDraw[]): void {
-  for (const n of graphNumbers(plans)) assert.ok(Number.isFinite(n), `non-finite graph coordinate: ${n}`)
-  for (const plan of plans) {
-    assert.ok(plan.width >= LANE_W, 'graph is at least one lane wide')
-    assert.equal(plan.width % LANE_W, 0, 'width is a whole number of lanes')
-    assert.ok(plan.lanes.length * LANE_W <= plan.width, 'all lanes fit inside the SVG width')
-    assert.equal(new Set(plan.lanes.map((lane) => lane.x)).size, plan.lanes.length,
-      'no two lanes share the same x on one row')
-    for (const lane of plan.lanes) {
+    for (const lane of [...plan.input, ...plan.output]) {
       assert.match(lane.color, HEX)
-      assert.ok(lane.x + LANE_W / 2 <= plan.width, 'lane center fits inside the SVG width')
-      for (const fork of lane.forks) {
-        assert.match(fork.color, HEX)
-        assert.ok(fork.x + LANE_W / 2 <= plan.width, 'connector target fits inside the SVG width')
-      }
+      assert.ok(lane.id.length > 0)
     }
-    for (const tr of plan.transitions) {
-      assert.match(tr.color, HEX)
-      assert.ok(tr.x1 + LANE_W / 2 <= plan.width, 'transition start fits inside the SVG width')
-      assert.ok(tr.x2 + LANE_W / 2 <= plan.width, 'transition end fits inside the SVG width')
+
+    // Every row starts from the lanes the row above left behind.
+    if (index > 0) {
+      assert.deepEqual(plan.input, plans[index - 1].output,
+        `row ${index} inherits the previous row's lanes`)
     }
-  }
+
+    // The node sits in an existing lane or opens the next free one.
+    assert.equal(plan.inputIndex, plan.input.findIndex((lane) => lane.id === plan.hash))
+    assert.equal(plan.circleIndex, plan.inputIndex !== -1 ? plan.inputIndex : plan.input.length)
+    assert.ok(plan.circleIndex <= Math.max(plan.input.length, plan.output.length))
+
+    // Lanes only leave a row when the row's commit is what they waited for;
+    // a root commit consumes its own lane and leaves the others running.
+    const waitingOnHash = plan.input.filter((lane) => lane.id === plan.hash).length
+    assert.equal(plan.output.length, plan.input.length - waitingOnHash + parents[index].length,
+      'one lane per surviving lane, plus one per new parent')
+
+    // Parents after the first are resolved to output lanes and keep the color
+    // that lane was assigned.
+    assert.equal(plan.extraParents.length, Math.max(parents[index].length - 1, 0))
+    plan.extraParents.forEach((parent, i) => {
+      assert.equal(plan.output[parent.outputIndex].id, parents[index][i + 1])
+      assert.equal(parent.color, plan.output[parent.outputIndex].color)
+    })
+
+    assert.equal(plan.parentCount, parents[index].length)
+    assert.equal(plan.color, plan.inputIndex !== -1
+      ? plan.input[plan.inputIndex].color
+      : plan.output[plan.circleIndex]?.color ?? REF,
+      'the node takes the color of its own lane')
+  })
 }
 
 test('empty input plans nothing', () => {
   assert.deepEqual(planGraph([]), [])
+  assert.equal(graphColumnWidth([]), SWIMLANE_WIDTH * 2)
 })
 
-test('linear history keeps a single lane at x = 7 with no transitions', () => {
-  const plans = planGraph([row('C', ['B']), row('B', ['A']), row('A')])
-  assert.equal(plans.length, 3)
+test('linear history keeps one lane at x = 11 in the reference color', () => {
+  const plans = planGraph(linear)
+  assertSane(linear, plans)
   plans.forEach((plan, i) => {
-    assert.equal(plan.lanes.length, 1)
-    assert.equal(plan.lanes[0].x, LANE_W / 2)
-    assert.equal(plan.lanes[0].node, true)
-    assert.deepEqual(plan.lanes[0].forks, [])
-    assert.deepEqual(plan.transitions, [])
-    assert.equal(plan.width, LANE_W)
-    assert.equal(plan.lanes[0].hasParent, i < plans.length - 1)
+    assert.equal(plan.input.length, i === 0 ? 0 : 1, 'one lane enters every row but the first')
+    assert.equal(plan.circleIndex, 0)
+    assert.equal(plan.color, REF)
+    if (i > 0) assert.equal(plan.input[0].color, REF)
+    assert.deepEqual(plan.extraParents, [])
+    assert.equal(plan.width, 2 * SWIMLANE_WIDTH)
+    assert.equal(plan.parentCount, i < plans.length - 1 ? 1 : 0)
   })
-  assertSane(plans)
+  assert.equal(plans[0].inputIndex, -1, 'the newest commit opens the first lane')
+  assert.deepEqual(plans[0].input, [])
 })
 
-test('a root commit draws a node but no parent continuation', () => {
-  const plans = planGraph([row('root')])
-  assertSane(plans)
-  assert.equal(plans.length, 1)
-  assert.equal(plans[0].lanes.length, 1)
-  assert.equal(plans[0].lanes[0].node, true)
-  assert.equal(plans[0].lanes[0].hasParent, false)
-  assert.deepEqual(plans[0].lanes[0].forks, [])
-  assert.equal(plans[0].width, LANE_W)
-})
-
-test('diamond history reuses the existing parent lane instead of duplicating it', () => {
-  const rows = [row('M', ['A', 'B']), row('A', ['R']), row('B', ['R']), row('R')]
+test('a root commit keeps its lane but leaves none behind', () => {
+  const rows = [row('root')]
   const plans = planGraph(rows)
-  assertSane(plans)
-  assert.equal(plans.length, 4)
-
-  // Merge row: main lane continues; the merge connector belongs to the node
-  // lane and points to the side-parent output lane (VS Code convention).
-  const mergeLane = plans[0].lanes.find((lane) => lane.node)!
-  assert.equal(mergeLane.forks.length, 1)
-  assert.equal(mergeLane.forks[0].kind, 'merge')
-  assert.equal(mergeLane.forks[0].x, LANE_W * 1.5)
-
-  // A continues its lane down to R while B stays in the side lane.
-  assert.equal(plans[1].lanes.length, 2)
-
-  // B closes back to R, which already owns the first-parent lane. VS Code
-  // shifts the B commit's input lane into that existing output lane.
-  const rX = nodeLane(plans[3]).x
-  const bLane = nodeLane(plans[2])
-  assert.equal(bLane.forks.length, 1, 'B exposes the lane shift that closes into R')
-  assert.equal(bLane.forks[0].x, rX, 'the shift targets R\'s existing lane')
-  assert.equal(bLane.forks[0].kind, 'shift')
-  assert.equal(plans[2].lanes.length, 2, 'the B row keeps R + B only')
-
-  assert.equal(plans[3].lanes.length, 1)
-  assert.equal(plans[3].lanes[0].x, rX)
-  assert.equal(plans[3].lanes[0].node, true)
-  assert.equal(plans[3].lanes[0].hasParent, false)
+  assertSane(rows, plans)
+  assert.equal(plans[0].inputIndex, -1)
+  assert.equal(plans[0].circleIndex, 0)
+  assert.equal(plans[0].parentCount, 0)
+  assert.deepEqual(plans[0].output, [])
+  assert.equal(plans[0].color, REF)
+  assert.equal(plans[0].width, 2 * SWIMLANE_WIDTH)
 })
 
-test('a merge with more parents than palette colors stays deterministic and valid', () => {
+test('a disconnected root ends its lane but lets the other branches run on', () => {
+  // `git merge --allow-unrelated-histories` shape: two roots reachable from one
+  // merge. The first root must not drop the lane still waiting for the second.
+  const rows = [row('M', ['A', 'B']), row('A'), row('B')]
+  const plans = planGraph(rows)
+  assertSane(rows, plans)
+
+  assert.deepEqual(plans[0].output, [{ id: 'A', color: REF }, { id: 'B', color: AMBER }])
+  assert.deepEqual(plans[1].output, [{ id: 'B', color: AMBER }],
+    'A is a root, B is still pending')
+  assert.equal(plans[1].circleIndex, 0)
+  assert.equal(plans[1].color, REF)
+  assert.deepEqual(plans[2].input, [{ id: 'B', color: AMBER }])
+  assert.equal(plans[2].circleIndex, 0)
+  assert.equal(plans[2].parentCount, 0)
+  assert.equal(plans[2].color, AMBER, 'B keeps the colour it was given')
+  assert.deepEqual(plans[2].output, [])
+})
+
+test('a merge opens one lane per parent: first parent keeps the lane, the rest rotate', () => {
+  const rows = [row('M', ['A', 'B', 'C']), row('A'), row('B'), row('C')]
+  const plans = planGraph(rows)
+  assertSane(rows, plans)
+
+  assert.deepEqual(plans[0].output, [
+    { id: 'A', color: REF },
+    { id: 'B', color: AMBER },
+    { id: 'C', color: PINK },
+  ])
+  assert.deepEqual(plans[0].extraParents, [
+    { outputIndex: 1, color: AMBER },
+    { outputIndex: 2, color: PINK },
+  ])
+  assert.equal(plans[0].width, 4 * SWIMLANE_WIDTH)
+})
+
+test('the palette wraps after five lanes and stays deterministic', () => {
   const parents = Array.from({ length: 9 }, (_, i) => `p${i}`)
-  const rows = [row('M', parents), ...parents.map((hash) => row(hash))]
+  // Every parent forks from the same base commit, so the history stays connected.
+  const rows = [row('M', parents), ...parents.map((hash) => row(hash, ['q'])), row('q')]
   const plans = planGraph(rows)
-  assertSane(plans)
-  assert.equal(plans.length, 10)
+  assert.deepEqual(plans, planGraph(rows), 'identical input produces identical output')
 
-  const merge = plans[0]
-  assert.equal(merge.lanes.length, 1)
-  assert.equal(merge.lanes[0].forks.length, 8)
-  assert.equal(merge.width, 9 * LANE_W, 'nine simultaneous lanes widen the column')
-  assert.deepEqual(planGraph(rows), plans, 'identical input produces identical output')
+  assert.deepEqual(plans[0].output.map((lane) => lane.color), [
+    REF, AMBER, PINK, BROWN, TEAL, PURPLE, AMBER, PINK, BROWN,
+  ])
+  assert.equal(plans[0].extraParents.length, 8)
+  plans[0].extraParents.forEach((parent, i) => assert.equal(parent.outputIndex, i + 1))
+  assert.equal(plans[0].width, 10 * SWIMLANE_WIDTH, 'nine lanes need ten columns of room')
+  assert.equal(graphColumnWidth(plans), 10 * SWIMLANE_WIDTH)
 })
 
-test('lane closing is represented by VS Code rounded lane-shift connectors', () => {
-  const rows = [row('M', ['A', 'B', 'C']), row('A'), row('B', ['X']), row('C', ['X']), row('X')]
-  const plans = planGraph(rows)
-  assertSane(plans)
-  const shifts = plans.flatMap((plan) => plan.lanes.flatMap((lane) => lane.forks.filter((fork) => fork.kind === 'shift')))
-  assert.ok(shifts.length > 0, 'closing lanes are represented as rounded lane shifts')
-  for (const fork of shifts) assert.ok(fork.x >= 0)
+test('a diamond reuses the fork lane and folds the branch back into the node', () => {
+  const plans = planGraph(diamond)
+  assertSane(diamond, plans)
+
+  // M: main lane plus one feature lane, joined by a parent connector.
+  assert.deepEqual(plans[0].output, [{ id: 'A', color: REF }, { id: 'B', color: AMBER }])
+  assert.deepEqual(plans[0].extraParents, [{ outputIndex: 1, color: AMBER }])
+
+  // A keeps lane 0 and hands it to R; B stays in lane 1.
+  assert.deepEqual(plans[1].output, [{ id: 'R', color: REF }, { id: 'B', color: AMBER }])
+
+  // B's first parent R already owns lane 0, so VS Code keeps a second lane
+  // for it: the node keeps its own column and the duplicate is closed later.
+  assert.equal(plans[2].inputIndex, 1)
+  assert.equal(plans[2].circleIndex, 1)
+  assert.equal(plans[2].color, AMBER, 'the B node stays in the branch color')
+  assert.deepEqual(plans[2].output, [{ id: 'R', color: REF }, { id: 'R', color: AMBER }])
+
+  // R consumes both lanes and closes the branch line in the row itself.
+  assert.deepEqual(plans[3].input, [{ id: 'R', color: REF }, { id: 'R', color: AMBER }])
+  assert.equal(plans[3].inputIndex, 0)
+  assert.equal(plans[3].circleIndex, 0)
+  assert.equal(plans[3].color, REF)
+  assert.deepEqual(plans[3].output, [])
+})
+
+test('the emulator history keeps its two merged branches on separate lanes', () => {
+  const plans = planGraph(avd)
+  assertSane(avd, plans)
+
+  // merge-b: main lane plus the feat-b lane.
+  assert.deepEqual(plans[0].output, [{ id: 'merge-a', color: REF }, { id: 'feat-b2', color: AMBER }])
+
+  // The feat-b branch walks down its own lane in the amber color.
+  for (let i = 1; i <= 3; i++) {
+    assert.equal(plans[i].circleIndex, 1, `row ${i} keeps feat-b on lane 1`)
+    assert.equal(plans[i].color, AMBER)
+  }
+
+  // merge-a joins the base commit (first parent) and the feat-a branch.
+  assert.equal(plans[4].circleIndex, 0)
+  assert.equal(plans[4].color, REF)
+  assert.deepEqual(plans[4].output.map((lane) => lane.id), ['base-4', 'base-4', 'feat-a2'],
+    'the base commit lane is kept next to the one merge-a inherits')
+  assert.deepEqual(plans[4].extraParents, [{ outputIndex: 2, color: PINK }])
+
+  // feat-a runs in the pink lane until the shared base commit collects it.
+  for (let i = 5; i <= 6; i++) {
+    assert.equal(plans[i].circleIndex, 2, `row ${i} keeps feat-a on lane 2`)
+    assert.equal(plans[i].color, PINK)
+  }
+  assert.deepEqual(plans[7].input.map((lane) => lane.id), ['base-4', 'base-4', 'base-4'])
+  assert.equal(plans[7].output.length, 1, 'the duplicates are folded into the base commit')
 })
 
 test('paginating (prefixing) never changes earlier rows', () => {
-  const rows = [
-    row('H', ['M', 'F']),
-    row('M', ['A', 'B']),
-    row('F', ['A']),
-    row('A', ['R']),
-    row('B', ['R']),
-    row('R'),
-  ]
-  const full = planGraph(rows)
-  assertSane(full)
-  assert.deepEqual(planGraph(rows), full, 'planGraph is deterministic')
-  for (let k = 0; k <= rows.length; k++) {
-    assert.deepEqual(planGraph(rows.slice(0, k)), full.slice(0, k), `prefix of length ${k} is stable`)
+  const full = planGraph(avd)
+  assert.deepEqual(planGraph(avd), full, 'planGraph is deterministic')
+  for (let k = 0; k <= avd.length; k++) {
+    assert.deepEqual(planGraph(avd.slice(0, k)), full.slice(0, k), `prefix of length ${k} is stable`)
   }
+})
+
+test('a branch that starts on the current tip reuses the reference lane', () => {
+  const rows = [row('M', ['A', 'B']), row('B', ['A']), row('A')]
+  const plans = planGraph(rows)
+  assertSane(rows, plans)
+  assert.deepEqual(plans[0].output, [{ id: 'A', color: REF }, { id: 'B', color: AMBER }])
+  assert.equal(plans[1].inputIndex, 1)
+  assert.equal(plans[1].color, AMBER)
+  assert.deepEqual(plans[1].output, [{ id: 'A', color: REF }, { id: 'A', color: AMBER }])
+  assert.equal(plans[2].inputIndex, 0)
+  assert.equal(plans[2].color, REF)
 })

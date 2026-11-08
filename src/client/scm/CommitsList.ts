@@ -2,8 +2,9 @@
  * React commits list — the "recent commits" list with its graph column.
  *
  * Rows are React elements, the graph is drawn with React SVG elements from the
- * pure {@link planGraph} plan, and the inline commit detail renders from the
- * detail cache (no imperative DOM insertion).
+ * pure planner ({@link planGraph}) and painter ({@link drawGraph}), and the
+ * inline commit detail renders from the detail cache (no imperative DOM
+ * insertion).
  * @module dsh-solution-explorer/client/scm/CommitsList
  */
 import { createElement as h, Fragment } from 'react'
@@ -12,15 +13,15 @@ import { FileTypeIcon } from '../icons.ts'
 import { t } from '../locales.ts'
 import { relTime } from '../shared/dom.ts'
 import { gitStatusClass } from '../explorer/file-kind.ts'
-import { planGraph, type GraphRowDraw } from './graph.ts'
-import { laneShiftPath, mergeParentPath, SWIMLANE_HEIGHT, SWIMLANE_WIDTH } from './graph-path.ts'
+import { graphColumnWidth, planGraph } from './graph.ts'
+import { drawGraph } from './graph-draw.ts'
+import type { GraphRowPaint } from './graph-draw.ts'
+import { SWIMLANE_HEIGHT } from './graph-path.ts'
 import type { CommitState } from '../state/store.ts'
 
 // Must equal the CSS height of one `.sol-exp-commit-item`: the SVG fills the
 // whole row so lane lines are continuous across rows (no inter-row gaps).
 const ROW_H = SWIMLANE_HEIGHT
-const NODE_R = 4
-const MERGE_R = 6
 
 /** Actions the commits list needs. */
 export interface CommitsActions {
@@ -34,56 +35,37 @@ export interface CommitsListProps {
   actions: CommitsActions
 }
 
-/** One row's graph column, drawn as React SVG elements. */
-function GraphSvg({ draw, merge }: { draw: GraphRowDraw; merge: boolean }): ReactNode {
-  const children: ReactNode[] = []
-  const nodeLane = draw.lanes.find((lane) => lane.node)
-  const nodeIndex = Math.max(0, Math.round(((nodeLane?.x ?? 5.5) - 5.5) / SWIMLANE_WIDTH))
-  const nodeX = 5.5 + nodeIndex * SWIMLANE_WIDTH
-  const nodeR = merge ? MERGE_R : NODE_R
+/**
+ * One row's graph column, drawn as React SVG elements in VS Code's order:
+ * connectors first, the node last so it covers the line ends beneath it.
+ * `width` is shared by every row so the hash/message columns stay aligned.
+ */
+function GraphSvg({ paint, width }: { paint: GraphRowPaint; width: number }): ReactNode {
+  const children: ReactNode[] = paint.segments.map((segment) => h('path', {
+    key: segment.key,
+    d: segment.d,
+    fill: 'none',
+    stroke: segment.color,
+    strokeWidth: 1,
+    strokeLinecap: 'round',
+  }))
 
-  // Draw lane shifts and straight continuations first. VS Code computes these
-  // from each lane's input/output column before drawing any commit circles.
-  draw.lanes.forEach((lane, inputIndex) => {
-    const laneIndex = Math.max(0, Math.round((lane.x - 5.5) / SWIMLANE_WIDTH))
-    const shift = lane.forks.find((fork) => fork.kind === 'shift')
-    const d = shift
-      ? laneShiftPath(laneIndex, Math.max(0, Math.round((shift.x - 5.5) / SWIMLANE_WIDTH)))
-      : `M ${lane.x} 0 V ${SWIMLANE_HEIGHT}`
-    children.push(h('path', {
-      key: 'lane-' + inputIndex, d,
-      fill: 'none', stroke: lane.color, strokeWidth: 1, strokeLinecap: 'round',
+  // VS Code strokes every circle with the row background, which keeps the dots
+  // crisp where connectors run underneath; the "current" node's hole is filled
+  // the same way. Both colors live in CSS so hover/selection follow.
+  for (const node of paint.nodes) {
+    children.push(h('circle', {
+      key: node.key,
+      className: 'sol-exp-graph-node sol-exp-graph-' + node.kind,
+      cx: node.cx,
+      cy: node.cy,
+      r: node.r,
+      fill: node.kind === 'head-inner' ? undefined : node.fill,
+      strokeWidth: node.kind === 'head-inner' ? 4 : 2,
     }))
-  })
-
-  // Add non-first-parent connectors using VS Code's 11px parent arc + join.
-  draw.lanes.forEach((lane, inputIndex) => {
-    lane.forks.forEach((fork, forkIndex) => {
-      if (fork.kind !== 'merge') return
-      const parentIndex = Math.max(0, Math.round((fork.x - 5.5) / SWIMLANE_WIDTH))
-      children.push(h('path', {
-        key: `merge-${inputIndex}-${forkIndex}`,
-        d: mergeParentPath(nodeIndex, parentIndex),
-        fill: 'none', stroke: fork.color, strokeWidth: 1, strokeLinecap: 'round',
-      }))
-    })
-  })
-
-  // The node is the top layer; paths terminate behind its ring, matching the
-  // VS Code renderer's draw-paths-first, draw-circle-last ordering.
-  if (nodeLane) {
-    if (merge) {
-      children.push(h('circle', {
-        key: 'node-outer', cx: nodeX, cy: ROW_H / 2, r: nodeR,
-        fill: 'var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-layer-2))',
-        stroke: nodeLane.color, strokeWidth: 2,
-      }))
-      children.push(h('circle', { key: 'node-inner', cx: nodeX, cy: ROW_H / 2, r: 2, fill: nodeLane.color }))
-    } else {
-      children.push(h('circle', { key: 'node', cx: nodeX, cy: ROW_H / 2, r: nodeR, fill: nodeLane.color }))
-    }
   }
-  return h('svg', { className: 'sol-exp-graph-svg', width: draw.width, height: ROW_H }, children)
+
+  return h('svg', { className: 'sol-exp-graph-svg', width, height: ROW_H }, children)
 }
 
 /** The expanded file list + checkout action under a selected commit row. */
@@ -131,6 +113,8 @@ export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
   }
 
   const plans = planGraph(commits.rows)
+  const paints = drawGraph(plans)
+  const width = graphColumnWidth(plans)
   return h('div', { id: 'sol-exp-commits-list', style: listStyle },
     commits.rows.map((c, i) => {
       const selected = commits.graphDetailOpen === c.hash
@@ -142,7 +126,7 @@ export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
           onClick: () => actions.commitDetail(c.hash),
         },
           h('span', { className: 'sol-exp-graph', style: { display: 'flex', flexShrink: 0 } },
-            h(GraphSvg, { draw: plans[i], merge: (c.parents?.length ?? 0) > 1 })),
+            h(GraphSvg, { paint: paints[i], width })),
           h('span', { className: 'sol-exp-commit-hash', style: { flexShrink: 0 } }, c.shortHash),
           h('span', { className: 'sol-exp-commit-msg', style: { minWidth: 0 } }, c.message.substring(0, 60) + (c.message.length > 60 ? '...' : '')),
           h('span', { className: 'sol-exp-commit-date', style: { flexShrink: 0 } }, relTime(c.timestamp)),
