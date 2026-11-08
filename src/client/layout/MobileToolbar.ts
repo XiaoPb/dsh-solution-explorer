@@ -4,7 +4,8 @@
  * Sits directly under the activity tabs, so the actions stay in the same
  * visual group as the view they belong to. CSS shows it only while the column
  * carries `data-sol-exp-sheet`; desktop keeps the original view header. Search
- * needs no actions; SCM only needs refresh at this level.
+ * and SCM need no actions at this level (SCM keeps refresh/stage/discard in its
+ * section headers), so the bar is not rendered for them at all.
  * @module dsh-solution-explorer/client/layout/MobileToolbar
  */
 import { createElement as h } from 'react'
@@ -54,16 +55,8 @@ export function MobileToolbar({ state, actions }: MobileToolbarProps): ReactNode
     )
   }
 
-  if (state.currentTab === 'scm') {
-    return h('div', {
-      className: 'sol-exp-mobile-toolbar',
-      'data-sol-exp-toolbar': 'scm',
-      role: 'toolbar',
-      'aria-label': t('header.actions'),
-    },
-      item(t('scm.refresh'), h(IconRefreshOutline, { size: TOOLBAR_ICON_SIZE }), actions.scm.refresh),
-    )
-  }
-
+  // SCM has no toolbar-level action: refresh, stage-all and discard-all live
+  // in the section headers, so an almost-empty bar would just waste height on
+  // a phone.
   return null
 }

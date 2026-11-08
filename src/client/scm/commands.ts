@@ -300,7 +300,9 @@ export function registerScmCommands(deps: ScmCommandsDeps): () => void {
     // stale or duplicate SCM region after session/repo switches,
     // leaving the visible section stuck open.
     const scope = state.activeEl ?? document;
-    const el = scope.querySelector(`[data-section="${id}"]`);
+    // Top-level sections carry data-section; nested VS Code groups carry
+    // data-subsection. Either one toggles the same `collapsed` class.
+    const el = scope.querySelector(`[data-section="${id}"], [data-subsection="${id}"]`);
     if (el) {
       if (el.classList.contains("collapsed")) {
         el.classList.remove("collapsed");

@@ -209,19 +209,19 @@ body {
 
 .sol-exp-scm-section { }
 
-.sol-exp-scm-section-header { display:flex; align-items:center; gap:4px; padding:8px 12px; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--dsw-alias-label-secondary); }
+.sol-exp-scm-section-header { display:flex; align-items:center; gap:6px; height:34px; padding:0 12px; box-sizing:border-box; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--dsw-alias-label-secondary); }
 
 .sol-exp-scm-section-header:hover { color:var(--dsw-alias-label-primary); }
 
-.sol-exp-scm-section-count { font-size:11px; font-weight:400; color:var(--dsw-alias-label-tertiary); }
+.sol-exp-scm-section-count { font-size:11px; font-weight:400; color:var(--dsw-alias-label-tertiary); min-width:16px; text-align:right; }
 
 .sol-exp-scm-subsection.collapsed > *:not(.sol-exp-scm-subsection-header) { display:none !important; }
 
-.sol-exp-scm-subsection-header { display:flex; align-items:center; gap:4px; padding:6px 12px 2px 22px; cursor:pointer; font-size:11px; font-weight:600; color:var(--dsw-alias-label-secondary); }
+.sol-exp-scm-subsection-header { display:flex; align-items:center; gap:6px; height:28px; padding:0 12px 0 22px; box-sizing:border-box; cursor:pointer; font-size:11px; font-weight:600; color:var(--dsw-alias-label-secondary); }
 
 .sol-exp-scm-subsection-header:hover { color:var(--dsw-alias-label-primary); }
 
-.sol-exp-scm-item { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 10px 5px 24px; box-sizing:border-box; cursor:pointer; font-size:13px; line-height:20px; border-radius:10px; }
+.sol-exp-scm-item { display:flex; align-items:center; gap:6px; min-width:0; min-height:30px; padding:0 10px 0 22px; box-sizing:border-box; cursor:pointer; font-size:13px; line-height:18px; border-radius:10px; }
 
 .sol-exp-scm-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
 
@@ -233,7 +233,7 @@ body {
 
 .sol-exp-scm-item:hover .sol-exp-scm-actions { display:flex; }
 
-.sol-exp-scm-action-btn { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:none; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; border-radius:3px; padding:0; font-size:11px; }
+.sol-exp-scm-action-btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:none; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; border-radius:4px; padding:0; font-size:11px; }
 
 .sol-exp-scm-action-btn:hover { background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-primary); }
 
@@ -251,9 +251,9 @@ body {
 
 .sol-exp-diff-empty { padding:8px; color:var(--dsw-alias-label-tertiary); font-size:12px; }
 
-.sol-exp-scm-header-actions { display:flex; align-items:center; gap:2px; margin-left:auto; }
+.sol-exp-scm-header-actions { display:flex; align-items:center; gap:2px; margin-left:auto; height:24px; }
 
-.sol-exp-hdr-btn { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:none; border-radius:6px; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; padding:0; }
+.sol-exp-hdr-btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:none; border-radius:6px; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; padding:0; font-size:13px; line-height:1; }
 
 .sol-exp-hdr-btn:hover { background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-primary); }
 
@@ -263,7 +263,7 @@ body {
 
 .sol-exp-commit-box { padding:8px 12px 4px; }
 
-.sol-exp-commit-input { width:100%; box-sizing:border-box; padding:6px 10px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; background:var(--dsw-alias-bg-input); color:var(--dsw-alias-label-primary); font-size:13px; line-height:18px; outline:none; resize:none; font-family:inherit; min-height:60px; transition:border-color 120ms ease, background-color 120ms ease; }
+.sol-exp-commit-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; background:var(--dsw-alias-bg-input); color:var(--dsw-alias-label-primary); font-size:13px; line-height:18px; outline:none; resize:none; font-family:inherit; min-height:64px; transition:border-color 120ms ease, background-color 120ms ease; }
 
 .sol-exp-commit-input:focus { border-color:var(--dsw-alias-brand-primary); background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-bg-input)); }
 
@@ -271,7 +271,25 @@ body {
 
 .sol-exp-commit-row { display:flex; gap:6px; margin-top:6px; }
 
-.sol-exp-commit-btn { flex:1; width:100%; padding:5px 0; border:none; border-radius:6px; background:var(--dsw-alias-button-info-fill); color:#fff; font-size:13px; font-weight:500; cursor:pointer; line-height:20px; transition:background-color 120ms ease; }
+.sol-exp-commit-split { display:flex; flex:1; min-width:0; }
+
+.sol-exp-commit-split .sol-exp-commit-btn { width:auto; flex:1; border-radius:6px 0 0 6px; }
+
+.sol-exp-commit-caret { flex:none; width:32px; height:32px; border:none; border-left:1px solid rgba(255,255,255,.25); border-radius:0 6px 6px 0; background:var(--dsw-alias-button-info-fill); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; box-sizing:border-box; }
+
+.sol-exp-commit-caret:hover:not(:disabled) { background:var(--dsw-alias-button-info-hover); }
+
+.sol-exp-commit-caret:disabled { opacity:.4; cursor:default; }
+
+.sol-exp-commit-menu { margin-top:4px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; background:var(--dsw-alias-bg-layer-3); overflow:hidden; }
+
+.sol-exp-commit-menu-item { display:flex; align-items:center; width:100%; gap:6px; height:30px; padding:0 10px; box-sizing:border-box; border:none; background:transparent; color:var(--dsw-alias-label-primary); font:inherit; font-size:12px; text-align:left; cursor:pointer; }
+
+.sol-exp-commit-menu-item:hover:not(:disabled) { background:var(--dsw-alias-interactive-bg-hover); }
+
+.sol-exp-commit-menu-item:disabled { opacity:.4; cursor:default; }
+
+.sol-exp-commit-btn { flex:1; width:100%; height:32px; padding:0 12px; box-sizing:border-box; border:none; border-radius:6px; background:var(--dsw-alias-button-info-fill); color:#fff; font-size:13px; font-weight:500; cursor:pointer; line-height:32px; display:inline-flex; align-items:center; justify-content:center; transition:background-color 120ms ease; }
 
 .sol-exp-commit-btn:hover:not(:disabled) { background:var(--dsw-alias-button-info-hover); }
 
@@ -543,9 +561,13 @@ body {
 .sol-exp-hl .hljs-deletion { color: #ffdcd7; background-color: #67060c; }
 .sol-exp-hl .hljs-char.escape_, .sol-exp-hl .hljs-link, .sol-exp-hl .hljs-params, .sol-exp-hl .hljs-property, .sol-exp-hl .hljs-punctuation, .sol-exp-hl .hljs-tag { }
 .sol-exp-scm-section.collapsed > *:not(.sol-exp-scm-section-header) { display:none !important; }
-.sol-exp-scm-section.collapsed .sol-exp-scm-section-header svg { transform: rotate(0deg) !important; }
-.sol-exp-branch-pill { display:inline-flex; align-items:center; gap:4px; padding:1px 8px; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); font-size:11px; font-weight:500; color:var(--dsw-alias-label-primary); }
-.sol-exp-commit-item { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; }
+/* Chevron feedback: right when collapsed, down when expanded (VS Code). */
+.sol-exp-scm-section-header > svg:first-child,
+.sol-exp-scm-subsection-header > svg:first-child { transition: transform 120ms ease; transform: rotate(0deg); }
+.sol-exp-scm-section:not(.collapsed) > .sol-exp-scm-section-header > svg:first-child,
+.sol-exp-scm-subsection:not(.collapsed) > .sol-exp-scm-subsection-header > svg:first-child { transform: rotate(90deg); }
+.sol-exp-branch-pill { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px; box-sizing:border-box; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); font-size:11px; font-weight:500; color:var(--dsw-alias-label-primary); }
+.sol-exp-commit-item { display:flex; align-items:center; gap:6px; min-width:0; min-height:28px; padding:0 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; }
 .sol-exp-commit-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-commit-item.selected { background:var(--dsw-alias-interactive-bg-active); }
 .sol-exp-graph-svg { flex:none; display:block; }
@@ -585,11 +607,11 @@ body {
 .sol-exp-scm-repository-body { padding:2px 12px 8px; display:flex; flex-direction:column; }
 .sol-exp-scm-branch-line { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--dsw-alias-label-tertiary); padding:4px 0 2px; }
 .sol-exp-scm-commits-body { padding:2px 8px 8px 12px; }
-.sol-exp-scm-empty { padding:4px 12px 8px 22px; font-size:12px; color:var(--dsw-alias-label-tertiary); }
+.sol-exp-scm-empty { display:flex; align-items:center; min-height:30px; padding:0 12px 0 22px; box-sizing:border-box; font-size:12px; color:var(--dsw-alias-label-tertiary); }
 .sol-exp-scm-inline-panel { margin:6px 0 2px; padding:8px; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; background:var(--dsw-alias-bg-layer-3); font-size:12px; }
 .sol-exp-scm-inline-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
 .sol-exp-scm-inline-hint { color:var(--dsw-alias-label-tertiary); padding:2px 0 6px; }
-.sol-exp-scm-inline-row { display:flex; align-items:center; gap:6px; padding:2px 0; min-width:0; }
+.sol-exp-scm-inline-row { display:flex; align-items:center; gap:6px; min-height:30px; padding:0; min-width:0; }
 .sol-exp-scm-inline-name { flex:none; font-weight:600; }
 .sol-exp-scm-inline-url { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-secondary); }
 .sol-exp-scm-inline-add { display:flex; gap:6px; margin-top:8px; }
@@ -597,13 +619,13 @@ body {
 .sol-exp-scm-branch-row { cursor:pointer; }
 .sol-exp-scm-branch-current { flex:none; width:14px; }
 .sol-exp-scm-branch-hash { flex:none; font-size:10px; color:var(--dsw-alias-label-tertiary); }
-.sol-exp-scm-mini-btn { padding:1px 5px; }
-.sol-exp-repo-item { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; padding:5px 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; font-size:12px; }
+.sol-exp-scm-mini-btn { display:inline-flex; align-items:center; justify-content:center; height:22px; padding:0 6px; box-sizing:border-box; }
+.sol-exp-repo-item { display:flex; align-items:center; gap:6px; min-width:0; min-height:30px; overflow:hidden; padding:0 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; font-size:12px; }
 .sol-exp-repo-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-repo-item.active { background:var(--dsw-alias-interactive-bg-active); }
 .sol-exp-repo-icon { flex:none; color:var(--dsw-alias-state-business-primary); }
 .sol-exp-repo-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-primary); }
-.sol-exp-repo-kind { flex:none; max-width:45%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:16px; padding:0 5px; border-radius:4px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-tertiary); }
+.sol-exp-repo-kind { flex:none; display:inline-flex; align-items:center; max-width:45%; height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:1; padding:0 5px; box-sizing:border-box; border-radius:4px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-tertiary); }
 .sol-exp-repo-kind.worktree { color:var(--dsw-alias-state-business-primary); }
 .sol-exp-repo-branch { flex:0 1 auto; min-width:0; max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--dsw-alias-label-tertiary); }
 .sol-exp-rename-input { flex:1; min-width:0; box-sizing:border-box; border:1px solid var(--dsw-alias-brand-primary); border-radius:4px; background:var(--dsw-alias-bg-input); color:var(--dsw-alias-label-primary); font:inherit; font-size:13px; line-height:20px; padding:0 4px; outline:none; }
@@ -773,13 +795,25 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
   .sol-exp-repo-item,
   .sol-exp-search-item { min-height: var(--sol-exp-touch-target); }
 
-  .sol-exp-scm-section-header { min-height: var(--sol-exp-touch-target); }
+  .sol-exp-scm-section-header,
+  .sol-exp-scm-subsection-header,
+  .sol-exp-scm-empty,
+  .sol-exp-scm-inline-row,
+  .sol-exp-commit-menu-item { min-height: var(--sol-exp-touch-target); }
 
   .sol-exp-hdr-btn,
   .sol-exp-scm-action-btn {
     width: var(--sol-exp-scm-action-size);
     height: var(--sol-exp-scm-action-size);
   }
+
+  /* The split caret must match the commit button's touch height exactly. */
+  .sol-exp-commit-caret {
+    width: var(--sol-exp-scm-action-size);
+    min-height: var(--sol-exp-touch-target);
+  }
+
+  .sol-exp-scm-inline-input { height: var(--sol-exp-touch-target); }
 
   /* Touch has no hover: per-file stage/discard must be visible. */
   .sol-exp-scm-actions { display: flex; }

@@ -12,7 +12,7 @@
  * distinct fetch/pull/push/sync icons).
  * @module dsh-solution-explorer/client/scm/ScmPanel
  */
-import { createElement as h, Fragment } from 'react'
+import { createElement as h, Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   IconRefreshOutline,
@@ -23,6 +23,7 @@ import {
   IconFolderClose,
   FileTypeIcon,
   IconChevronRightOutline,
+  IconChevronDownOutline,
 } from '../icons.ts'
 import { t } from '../locales.ts'
 import { isPreviewOnlyFile } from '../explorer/file-kind.ts'
@@ -96,7 +97,7 @@ function Section(props: {
 }): ReactNode {
   return h('div', { className: 'sol-exp-scm-section' + (props.collapsed ? ' collapsed' : ''), 'data-section': props.id },
     h('div', { className: 'sol-exp-scm-section-header', onClick: props.onToggle },
-      h(IconChevronRightOutline, { size: 14 }),
+      h(IconChevronRightOutline, { size: 16 }),
       props.title,
       h('span', { className: 'sol-exp-scm-header-actions' }, props.headerActions),
       h('span', { className: 'sol-exp-scm-section-count' }, props.count),
@@ -117,7 +118,7 @@ function SubSection(props: {
 }): ReactNode {
   return h('div', { className: 'sol-exp-scm-subsection' + (props.collapsed ? ' collapsed' : ''), 'data-subsection': props.id },
     h('div', { className: 'sol-exp-scm-subsection-header', onClick: props.onToggle },
-      h(IconChevronRightOutline, { size: 12 }),
+      h(IconChevronRightOutline, { size: 14 }),
       props.title,
       h('span', { className: 'sol-exp-scm-header-actions' }, props.headerActions),
       h('span', { className: 'sol-exp-scm-section-count' }, props.count),
@@ -143,17 +144,17 @@ function ScmItem({ item, section, actions }: { item: ScmChange; section: string;
         ? h('button', {
             className: 'sol-exp-scm-action-btn', title: t('scm.unstage'),
             onClick: (e) => { e.stopPropagation(); actions.unstage([item.path]) },
-          }, h(IconCloseOutline, { size: 14 }))
+          }, h(IconCloseOutline, { size: 16 }))
         : h(Fragment, null,
             h('button', {
               className: 'sol-exp-scm-action-btn',
               title: section === 'conflicts' ? t('scm.merge.changes') : t('scm.stage'),
               onClick: (e) => { e.stopPropagation(); actions.stage([item.path]) },
-            }, h(IconPlusOutline, { size: 14 })),
+            }, h(IconPlusOutline, { size: 16 })),
             h('button', {
               className: 'sol-exp-scm-action-btn', title: t('scm.discard'),
               onClick: (e) => { e.stopPropagation(); actions.discard([item.path]) },
-            }, h(IconTrashOutline, { size: 14 })),
+            }, h(IconTrashOutline, { size: 16 })),
           ),
     ),
   )
@@ -205,7 +206,7 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
       title: r.path,
       onClick: () => actions.selectRepo(r.path),
     },
-      h('span', { className: 'sol-exp-repo-icon' }, h(IconBranchOutline, { size: 14 })),
+      h('span', { className: 'sol-exp-repo-icon' }, h(IconBranchOutline, { size: 16 })),
       h('span', { className: 'sol-exp-repo-name', title: r.name }, r.name),
       kindLabel
         ? h('span', {
@@ -216,7 +217,7 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
       h('span', { className: 'sol-exp-repo-branch', title: r.branch }, r.branch),
       h('span', { className: 'sol-exp-hdr-btn', title: t('scm.remote.title'), onClick: (e) => { e.stopPropagation(); actions.remotePanel() } }, '⇅'),
       h('span', { className: 'sol-exp-hdr-btn', title: t('scm.branch.title'), onClick: (e) => { e.stopPropagation(); actions.branchPanel() } },
-        h(IconBranchOutline, { size: 12 })),
+        h(IconBranchOutline, { size: 14 })),
     )
   }
 
@@ -275,6 +276,12 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
           h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.branchCreate() }, t('scm.branch.create'))))
     : null
 
+  // VS Code's commit box shows the branch inside the placeholder; the split
+  // caret opens the secondary commit actions.
+  const [commitMenuOpen, setCommitMenuOpen] = useState(false)
+  const branchForPlaceholder = status?.branch && status.branch !== 'unknown' ? status.branch : 'HEAD'
+  const commitPlaceholder = t('scm.commit.placeholder').replace('{branch}', branchForPlaceholder)
+
   const conflictsBlock = conflicts.length > 0
     ? h(SubSection, {
         id: 'conflicts', title: t('scm.merge.changes'), count: conflicts.length,
@@ -288,7 +295,7 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
         id: 'staged', title: t('scm.staged'), count: staged.length,
         collapsed: collapsed('staged'), onToggle: () => actions.toggleSection('staged'),
         headerActions: h('button', { className: 'sol-exp-hdr-btn', title: t('scm.unstageAll'), onClick: (e) => { e.stopPropagation(); actions.unstageAll() } },
-          h(IconCloseOutline, { size: 12 })),
+          h(IconCloseOutline, { size: 14 })),
       },
         staged.map((item) => h(ScmItem, { key: item.path, item, section: 'staged', actions })))
     : null
@@ -317,49 +324,62 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
           remotePanel,
           branchPanel)),
 
-      // Commit message — fixed between Repository and Changes, like VS Code, so
-      // it stays reachable even while the Changes group is collapsed.
-      h('div', { className: 'sol-exp-commit-box' },
-        h('textarea', {
-          className: 'sol-exp-commit-input',
-          placeholder: t('scm.commit.placeholder') + (status?.branch && status.branch !== 'unknown' ? ' (' + status.branch + ')' : ''),
-          value: scm.commitMessage,
-          onChange: (e) => actions.commitMsg(e.target.value),
-        }),
-        h('div', { className: 'sol-exp-commit-row' },
-          h('button', {
-            className: 'sol-exp-commit-btn',
-            disabled: scm.committing || !scm.commitMessage.trim(),
-            onClick: () => actions.commit(),
-          }, scm.committing ? t('scm.committing') : t('scm.commit.button')),
-          h('button', {
-            className: 'sol-exp-ai-btn', title: t('scm.ai.gen'),
-            disabled: scm.aiGenerating || !(staged.length > 0),
-            onClick: () => actions.genCommitMsg(),
-          }, '✦'))),
-
-      // 2. Changes — conflicts, staged group and working-tree changes.
+      // 2. Changes — VS Code's Source Control block: message box, split commit
+      // button, then conflicts / staged / working-tree groups.
       h(Section, {
-        id: 'changes', title: t('scm.changes'), count: allChanges.length,
+        id: 'changes', title: t('scm.changes'),
         collapsed: collapsed('changes'), onToggle: () => actions.toggleSection('changes'),
         headerActions: h(Fragment, null,
           h('button', { className: 'sol-exp-hdr-btn', title: t('scm.refresh'), onClick: (e) => { e.stopPropagation(); actions.refresh() } },
-            h(IconRefreshOutline, { size: 14 })),
+            h(IconRefreshOutline, { size: 16 })),
           allChanges.length > 0
             ? h('button', { className: 'sol-exp-hdr-btn', title: t('scm.stageAll'), onClick: (e) => { e.stopPropagation(); actions.stageAll() } },
-                h(IconPlusOutline, { size: 14 }))
+                h(IconPlusOutline, { size: 16 }))
             : null,
           allChanges.length > 0
             ? h('button', { className: 'sol-exp-hdr-btn danger', title: t('scm.discardAll'), onClick: (e) => { e.stopPropagation(); actions.discardAll() } },
-                h(IconTrashOutline, { size: 14 }))
+                h(IconTrashOutline, { size: 16 }))
             : null),
       },
+        h('div', { className: 'sol-exp-commit-box' },
+          h('textarea', {
+            className: 'sol-exp-commit-input',
+            placeholder: commitPlaceholder,
+            value: scm.commitMessage,
+            onChange: (e) => actions.commitMsg(e.target.value),
+          }),
+          h('div', { className: 'sol-exp-commit-row' },
+            h('div', { className: 'sol-exp-commit-split' },
+              h('button', {
+                className: 'sol-exp-commit-btn',
+                disabled: scm.committing || !scm.commitMessage.trim(),
+                onClick: () => actions.commit(),
+              }, scm.committing ? t('scm.committing') : t('scm.commit.button')),
+              h('button', {
+                className: 'sol-exp-commit-caret',
+                title: t('scm.commit.more'),
+                'aria-label': t('scm.commit.more'),
+                disabled: scm.committing,
+                onClick: (e) => { e.stopPropagation(); setCommitMenuOpen((open) => !open) },
+              }, h(IconChevronDownOutline, { size: 16 })))),
+          commitMenuOpen
+            ? h('div', { className: 'sol-exp-commit-menu' },
+                h('button', {
+                  className: 'sol-exp-commit-menu-item',
+                  disabled: scm.aiGenerating || !(staged.length > 0),
+                  onClick: () => { setCommitMenuOpen(false); actions.genCommitMsg() },
+                }, '✦ ' + t('scm.ai.gen')))
+            : null),
         conflictsBlock,
         stagedBlock,
-        allChanges.length === 0 && staged.length === 0 && conflicts.length === 0
-          ? h('div', { className: 'sol-exp-scm-empty' }, t('scm.changes.none'))
-          : null,
-        allChanges.map((item) => h(ScmItem, { key: item.path, item, section: 'changes', actions }))),
+        h(SubSection, {
+          id: 'changes-list', title: t('scm.changes'), count: allChanges.length,
+          collapsed: collapsed('changes-list'), onToggle: () => actions.toggleSection('changes-list'),
+        },
+          allChanges.length === 0 && staged.length === 0 && conflicts.length === 0
+            ? h('div', { className: 'sol-exp-scm-empty' }, t('scm.changes.none'))
+            : null,
+          allChanges.map((item) => h(ScmItem, { key: item.path, item, section: 'changes', actions })))),
 
       // 3. Graph — the commit graph, VS Code's Source Control Graph.
       h(Section, {
