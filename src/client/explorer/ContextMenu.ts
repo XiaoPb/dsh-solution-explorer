@@ -38,9 +38,15 @@ export function ContextMenu({ menu, onClose }: ContextMenuProps): ReactNode {
     const el = ref.current
     if (el === null) return
     const box = el.getBoundingClientRect()
+    const rootStyle = getComputedStyle(document.documentElement)
+    const edge = parseFloat(rootStyle.getPropertyValue('--sol-exp-menu-edge')) || EDGE
+    // Custom-property values are not resolved to px; read the sheet's actual
+    // padding, which is the computed safe-area inset.
+    const panel = document.querySelector<HTMLElement>('[data-solution-explorer] .sol-exp-panel')
+    const safeBottom = panel === null ? 0 : (parseFloat(getComputedStyle(panel).paddingBottom) || 0)
     setPos({
-      left: Math.max(EDGE, Math.min(menu.x - window.scrollX, window.innerWidth - box.width - EDGE)),
-      top: Math.max(EDGE, Math.min(menu.y - window.scrollY, window.innerHeight - box.height - EDGE)),
+      left: Math.max(edge, Math.min(menu.x - window.scrollX, window.innerWidth - box.width - edge)),
+      top: Math.max(edge, Math.min(menu.y - window.scrollY, window.innerHeight - box.height - edge - safeBottom)),
     })
   }, [menu.x, menu.y, menu.entries.length])
 

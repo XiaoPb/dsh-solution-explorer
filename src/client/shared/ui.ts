@@ -19,11 +19,10 @@ export function showToast(msg: string, isError = false): void {
   if (!el) {
     el = document.createElement("div")
     el.id = "sol-exp-toast"
-    el.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:99999;max-width:340px;max-height:200px;overflow:auto;padding:8px 12px;border-radius:6px;background:var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-3,#1e1e1e));border:1px solid var(--dsw-alias-border-l2,#333);font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,0.35);white-space:pre-wrap;word-break:break-all;transition:opacity .3s;"
     document.body.appendChild(el)
   }
+  el.className = "sol-exp-toast" + (isError ? " error" : "")
   el.textContent = msg
-  el.style.color = isError ? "var(--dsw-color-error,#f48771)" : "var(--dsw-alias-label-primary,#d4d4d4)"
   el.style.opacity = "1"
   clearTimeout(toastTimer as ReturnType<typeof setTimeout>)
   toastTimer = setTimeout(() => { el!.style.opacity = "0"; setTimeout(() => el!.remove(), 400) }, 4000)
