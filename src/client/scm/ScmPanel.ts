@@ -29,6 +29,7 @@ import { t } from '../locales.ts'
 import { isPreviewOnlyFile } from '../explorer/file-kind.ts'
 import { CommitsList } from './CommitsList.ts'
 import type { ScmState, CommitState } from '../state/store.ts'
+import { useDraft } from '../shared/draft.ts'
 
 /** One change row as the git status payload reports it. */
 export interface ScmChange {
@@ -162,6 +163,17 @@ function ScmItem({ item, section, actions }: { item: ScmChange; section: string;
 
 /** The SCM panel: Repository → Changes → Graph, one scrollable column. */
 export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactNode {
+  // Hooks must run before the not-a-repo early returns, and every editable
+  // field needs a local draft: the mutable panel store does not re-render, so
+  // binding controlled inputs straight to it would erase each keystroke.
+  const [commitDraft, setCommitDraft] = useDraft(scm.commitMessage, actions.commitMsg)
+  const [remoteNameDraft, setRemoteNameDraft] = useDraft(scm.remoteName, actions.remoteName)
+  const [remoteUrlDraft, setRemoteUrlDraft] = useDraft(scm.remoteUrl, actions.remoteUrl)
+  const [branchNameDraft, setBranchNameDraft] = useDraft(scm.branchName, actions.branchName)
+  // VS Code's commit box shows the branch inside the placeholder; the split
+  // caret opens the secondary commit actions.
+  const [commitMenuOpen, setCommitMenuOpen] = useState(false)
+
   if (!root) {
     return h('div', { className: 'sol-exp-content' }, h('div', { className: 'sol-exp-empty' }, t('panel.empty')))
   }
@@ -237,13 +249,13 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
         h('div', { className: 'sol-exp-scm-inline-add' },
           h('input', {
             className: 'sol-exp-commit-input sol-exp-scm-inline-input',
-            placeholder: t('scm.remote.name'), value: scm.remoteName,
-            onChange: (e) => actions.remoteName(e.target.value),
+            placeholder: t('scm.remote.name'), value: remoteNameDraft,
+            onChange: (e) => setRemoteNameDraft(e.target.value),
           }),
           h('input', {
             className: 'sol-exp-commit-input sol-exp-scm-inline-input',
-            placeholder: t('scm.remote.url'), value: scm.remoteUrl,
-            onChange: (e) => actions.remoteUrl(e.target.value),
+            placeholder: t('scm.remote.url'), value: remoteUrlDraft,
+            onChange: (e) => setRemoteUrlDraft(e.target.value),
           }),
           h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.remoteAdd() }, t('scm.remote.addBtn'))))
     : null
@@ -270,15 +282,12 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
         h('div', { className: 'sol-exp-scm-inline-add' },
           h('input', {
             className: 'sol-exp-commit-input sol-exp-scm-inline-input',
-            placeholder: t('scm.branch.name'), value: scm.branchName,
-            onChange: (e) => actions.branchName(e.target.value),
+            placeholder: t('scm.branch.name'), value: branchNameDraft,
+            onChange: (e) => setBranchNameDraft(e.target.value),
           }),
           h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.branchCreate() }, t('scm.branch.create'))))
     : null
 
-  // VS Code's commit box shows the branch inside the placeholder; the split
-  // caret opens the secondary commit actions.
-  const [commitMenuOpen, setCommitMenuOpen] = useState(false)
   const branchForPlaceholder = status?.branch && status.branch !== 'unknown' ? status.branch : 'HEAD'
   const commitPlaceholder = t('scm.commit.placeholder').replace('{branch}', branchForPlaceholder)
 
@@ -345,14 +354,18 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
           h('textarea', {
             className: 'sol-exp-commit-input',
             placeholder: commitPlaceholder,
-            value: scm.commitMessage,
-            onChange: (e) => actions.commitMsg(e.target.value),
+            value: commitDraft,
+            onChange: (e) => {
+              const value = e.target.value
+              setCommitDraft(value)
+              actions.commitMsg(value)
+            },
           }),
           h('div', { className: 'sol-exp-commit-row' },
             h('div', { className: 'sol-exp-commit-split' },
               h('button', {
                 className: 'sol-exp-commit-btn',
-                disabled: scm.committing || !scm.commitMessage.trim(),
+                disabled: scm.committing || !commitDraft.trim(),
                 onClick: () => actions.commit(),
               }, scm.committing ? t('scm.committing') : t('scm.commit.button')),
               h('button', {
