@@ -47,6 +47,10 @@ export interface ScmState {
   gitStatus: any
   gitStatusChanged: boolean
   lastHeadHash: string
+  /** Monotonic generation for repository-list requests; late responses are dropped. */
+  reposSeq: number
+  /** Monotonic generation for Git-status requests; late responses are dropped. */
+  statusSeq: number
   repos: any[]
   activeRepo: string
   gitChangesCount: number
@@ -216,6 +220,8 @@ export function createInitialState(): AppState {
       gitStatus: null,
       gitStatusChanged: true,
       lastHeadHash: '',
+      reposSeq: 0,
+      statusSeq: 0,
       repos: [],
       activeRepo: '',
       gitChangesCount: 0,

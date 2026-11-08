@@ -130,6 +130,26 @@ export function scheduleHideCommitTooltip(deps: HistoryDeps) {
   deps.state.commits.commitTipHideTimer = setTimeout(() => hideCommitTooltip(deps), 200);
 }
 
+/**
+ * Full commit-list reset for a repository/workspace switch.
+ *
+ * Bumping `commitsSeq` invalidates any in-flight page fetch; the remaining
+ * fields drop the rendered list, pagination, inline detail and remote cache so
+ * the next worktree starts from a clean loading state. The tooltip is hidden
+ * because it describes a commit from the previous working tree.
+ */
+export function resetCommitsForSwitch(state: AppState): void {
+  state.commits.commitsSeq++;
+  state.commits.rows = null;
+  state.commits.commitsPage = 0;
+  state.commits.commitsAllLoaded = false;
+  state.commits.commitsLoading = false;
+  state.commits.graphDetailOpen = "";
+  state.commits.commitDetailCache.clear();
+  state.commits.remotesResolved = false;
+  hideCommitTooltip({ state });
+}
+
 export function cancelHideCommitTooltip({ state }: HistoryDeps) {
   if (state.commits.commitTipHideTimer) { clearTimeout(state.commits.commitTipHideTimer); state.commits.commitTipHideTimer = 0; }
 }
@@ -157,7 +177,6 @@ export async function showCommitTooltip(row: any, hash: string, deps: HistoryDep
 }
 
 export async function loadRecentCommits({ state, render }: HistoryDeps) {
-  console.log("[sol-exp] loadRecentCommits", Date.now());
   if (!state.root || !state.scm.gitStatus || state.scm.gitStatus.branch === "unknown") return;
   // Bump the generation so a git-log fetch still in flight for
   // the previous repo/branch is discarded when it lands.
@@ -179,15 +198,19 @@ export async function loadRecentCommits({ state, render }: HistoryDeps) {
 
 export async function loadCommitsPage({ state, render }: HistoryDeps) {
   if (!state.root || state.commits.commitsLoading || state.commits.commitsAllLoaded) return;
+  // The generation guards against newer loads; the root identity guards
+  // against a same-generation switch (root/repo change) that landed while
+  // the fetch was in flight.
+  const target = gitRoot(state);
   const seq = state.commits.commitsSeq;
   state.commits.commitsLoading = true;
   try {
-    const url = `/solution-explorer/git-log?root=${encodeURIComponent(gitRoot(state))}&count=50&skip=${state.commits.commitsPage * 50}`;
+    const url = `/solution-explorer/git-log?root=${encodeURIComponent(target)}&count=50&skip=${state.commits.commitsPage * 50}`;
     const result = await (await fetch(url)).json();
     // A newer load took over while this fetch was in flight
     // (conversation/repo switch, refresh) — discard the stale
     // response instead of writing it into the current list.
-    if (seq !== state.commits.commitsSeq) return;
+    if (seq !== state.commits.commitsSeq || gitRoot(state) !== target) return;
     if (result.ok && result.value) {
       // The list is React now: publish rows and let the root re-render.
       if (state.commits.commitsPage === 0 && result.value.length === 0) {
@@ -211,10 +234,10 @@ export async function loadCommitsPage({ state, render }: HistoryDeps) {
       render?.();
     }
   } catch (err) {
-    if (seq === state.commits.commitsSeq) console.error("Failed to load commits:", err);
+    if (seq === state.commits.commitsSeq && gitRoot(state) === target) console.error("Failed to load commits:", err);
   } finally {
     // Only the current generation may release the in-flight
     // guard; a stale fetch must not clear a newer one's flag.
-    if (seq === state.commits.commitsSeq) state.commits.commitsLoading = false;
+    if (seq === state.commits.commitsSeq && gitRoot(state) === target) state.commits.commitsLoading = false;
   }
 }

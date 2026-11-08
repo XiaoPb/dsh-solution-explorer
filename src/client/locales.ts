@@ -142,6 +142,8 @@ const zh = {
   'scm.repository': '存储库',
   'scm.repository.branch': '分支',
   'scm.repository.commits': '最近提交',
+  'scm.repo.repository': '仓库',
+  'scm.repo.worktree': '工作树',
 
   // Git init
   'scm.init.button': '初始化 Git 仓库',
@@ -372,6 +374,8 @@ const en: Record<SolutionExplorerKey, string> = {
   'scm.repository': 'Repository',
   'scm.repository.branch': 'Branch',
   'scm.repository.commits': 'Recent Commits',
+  'scm.repo.repository': 'Repository',
+  'scm.repo.worktree': 'Worktree',
 
   'scm.init.button': 'Initialize Git Repository',
   'scm.init.confirm': 'Initialize a git repository in this directory?',

@@ -15,6 +15,7 @@ import { gitRoot, type AppState } from "../state/store.ts"
 import type { ActionsDeps } from "./actions.ts"
 
 import type { HistoryDeps } from "./history.ts"
+import { resetCommitsForSwitch } from "./history.ts"
 
 import type { BranchesDeps } from "./branches.ts"
 import { commands } from '../commands.ts'
@@ -47,12 +48,25 @@ export function registerScmCommands(deps: ScmCommandsDeps): () => void {
   commands.selectRepo = (path) => {
     if (!path || path === state.scm.activeRepo) return;
     state.scm.activeRepo = path;
-    state.commits.commitDetailCache.clear();
-    state.commits.remotesResolved = false;
-    deps.loadGitStatus(deps.actionsDeps);
-    deps.loadRecentCommits(deps.historyDeps);
-    // React renders the selection highlight and the change list.
+    // A real switch invalidates the whole commit view: list, pagination,
+    // inline detail and tooltip still describe the previous worktree.
+    resetCommitsForSwitch(state);
+    const seqAfterReset = state.commits.commitsSeq;
+    // React renders the selection highlight and the cleared list immediately.
     render();
+    void (async () => {
+      // Status first: history must not be fetched while the previous
+      // worktree's status is still the only "is this a repo?" answer in state.
+      // A HEAD change inside loadGitStatus may already reload the history;
+      // only the fallback path (same HEAD, e.g. two worktrees on one commit)
+      // talks again after the fresh status lands.
+      await deps.loadGitStatus(deps.actionsDeps);
+      if (state.scm.activeRepo !== path) return;
+      const historyReloaded = state.commits.commitsSeq !== seqAfterReset;
+      if (!historyReloaded && state.scm.gitStatus && state.scm.gitStatus.branch !== "unknown") {
+        await deps.loadRecentCommits(deps.historyDeps);
+      }
+    })();
   };
 
   commands.commitDetail = async (hash) => {

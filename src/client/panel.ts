@@ -27,7 +27,7 @@ import { registerClipboardCommands } from "./explorer/clipboard.ts"
 import { registerContextMenuCommands } from "./explorer/context-menu.ts"
 
 
-import { getCommitDetail, hideCommitTooltip, scheduleHideCommitTooltip, cancelHideCommitTooltip, showCommitTooltip, loadRecentCommits, loadCommitsPage } from "./scm/history.ts"
+import { getCommitDetail, hideCommitTooltip, scheduleHideCommitTooltip, cancelHideCommitTooltip, showCommitTooltip, loadRecentCommits, loadCommitsPage, resetCommitsForSwitch } from "./scm/history.ts"
 
 import { loadGitStatus, loadRepos, doStage, doUnstage, doDiscard, doCommit } from "./scm/actions.ts"
 
@@ -609,18 +609,10 @@ export function mountPanel(ctx: ClientContext): void {
 
 					// Invalidate any in-flight commits fetch from the previous
 					// conversation and drop the cached list so the new repo's
-					// history starts from the loading placeholder.
-					state.commits.commitsSeq++;
-
-					state.commits.rows = null;
-
-					state.commits.commitsPage = 0;
-
-					state.commits.commitsAllLoaded = false;
-
-					state.commits.commitsLoading = false;
-					state.commits.commitDetailCache.clear();
-					state.commits.remotesResolved = false;
+					// history starts from the loading placeholder. The shared
+					// helper also closes the inline detail and the tooltip,
+					// which pointed at commits from the old workspace.
+					resetCommitsForSwitch(state);
 
 					state.tree.loading = state.root !== "";
 
@@ -632,9 +624,12 @@ export function mountPanel(ctx: ClientContext): void {
 
 						loadTree({ state, render });
 
-						loadRepos(actionsDeps);
-
-						loadGitStatus(actionsDeps);
+						// Discovery first: the status request must target the working
+						// tree loadRepos selects, never the (possibly non-repo) root.
+						void (async () => {
+							await loadRepos(actionsDeps);
+							if (state.root) await loadGitStatus(actionsDeps);
+						})();
 
 					}
 

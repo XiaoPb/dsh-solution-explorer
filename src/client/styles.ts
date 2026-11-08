@@ -581,12 +581,14 @@ body {
 .sol-exp-scm-divider:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-scm-bottom { flex:1 1 45%; min-height:0; display:flex; flex-direction:column; }
 .sol-exp-scm-section[data-section="commits"] { flex:1; min-height:0; display:flex; flex-direction:column; }
-.sol-exp-repo-item { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; font-size:12px; }
+.sol-exp-repo-item { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; padding:5px 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; font-size:12px; }
 .sol-exp-repo-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-repo-item.active { background:var(--dsw-alias-interactive-bg-active); }
 .sol-exp-repo-icon { flex:none; color:var(--dsw-alias-state-business-primary); }
-.sol-exp-repo-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-primary); }
-.sol-exp-repo-branch { flex:none; font-size:11px; color:var(--dsw-alias-label-tertiary); }
+.sol-exp-repo-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-primary); }
+.sol-exp-repo-kind { flex:none; max-width:45%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; line-height:16px; padding:0 5px; border-radius:4px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-tertiary); }
+.sol-exp-repo-kind.worktree { color:var(--dsw-alias-state-business-primary); }
+.sol-exp-repo-branch { flex:0 1 auto; min-width:0; max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--dsw-alias-label-tertiary); }
 .sol-exp-rename-input { flex:1; min-width:0; box-sizing:border-box; border:1px solid var(--dsw-alias-brand-primary); border-radius:4px; background:var(--dsw-alias-bg-input); color:var(--dsw-alias-label-primary); font:inherit; font-size:13px; line-height:20px; padding:0 4px; outline:none; }
 
 /* Settings page ("资源管理器" section) — flat grouped cards matching the

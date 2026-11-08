@@ -228,20 +228,32 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
       : null,
   )
 
-  const repoRow = (r: { path: string; name: string; branch: string }): ReactNode =>
-    h('div', {
+  const repoRow = (r: { path: string; name: string; branch: string; kind?: string }): ReactNode => {
+    // Optional because older hosts omit `kind`; never invent one when absent.
+    const kindLabel = r.kind === 'worktree'
+      ? t('scm.repo.worktree')
+      : r.kind === 'repository' ? t('scm.repo.repository') : ''
+    return h('div', {
       key: r.path,
       className: 'sol-exp-repo-item' + (scm.activeRepo === r.path ? ' active' : ''),
       'data-repo-path': r.path,
+      title: r.path,
       onClick: () => actions.selectRepo(r.path),
     },
       h('span', { className: 'sol-exp-repo-icon' }, h(IconBranchOutline, { size: 14 })),
-      h('span', { className: 'sol-exp-repo-name' }, r.name),
-      h('span', { className: 'sol-exp-repo-branch' }, r.branch),
+      h('span', { className: 'sol-exp-repo-name', title: r.name }, r.name),
+      kindLabel
+        ? h('span', {
+            className: 'sol-exp-repo-kind' + (r.kind === 'worktree' ? ' worktree' : ''),
+            title: kindLabel,
+          }, kindLabel)
+        : null,
+      h('span', { className: 'sol-exp-repo-branch', title: r.branch }, r.branch),
       h('span', { className: 'sol-exp-hdr-btn', title: t('scm.remote.title'), onClick: (e) => { e.stopPropagation(); actions.remotePanel() } }, '⇅'),
       h('span', { className: 'sol-exp-hdr-btn', title: t('scm.branch.title'), onClick: (e) => { e.stopPropagation(); actions.branchPanel() } },
         h(IconBranchOutline, { size: 12 })),
     )
+  }
 
   const remotePanel = scm.remotePanelOpen
     ? h('div', { style: { margin: '6px 0', padding: '8px', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '6px', fontSize: '12px' } },

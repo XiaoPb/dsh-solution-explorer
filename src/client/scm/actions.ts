@@ -15,6 +15,8 @@ import { loadTree } from "../explorer/tree-render.ts"
 
 import type { HistoryDeps } from "./history.ts"
 
+import { pickActiveRepo } from "./repo-selection.ts"
+
 export interface ActionsDeps {
   state: AppState
   render: () => void
@@ -23,13 +25,16 @@ export interface ActionsDeps {
 
 export async function loadRepos({ state, render }: ActionsDeps) {
   if (!state.root) return;
+  // Bind this request to the workspace it was started for: a late response
+  // from an old root must never overwrite the current list/selection.
+  const root = state.root;
+  const seq = ++state.scm.reposSeq;
   try {
-    const result = await (await fetch(`/solution-explorer/git-repos?root=${encodeURIComponent(state.root)}`)).json();
+    const result = await (await fetch(`/solution-explorer/git-repos?root=${encodeURIComponent(root)}`)).json();
+    if (seq !== state.scm.reposSeq || state.root !== root) return;
     if (result.ok && Array.isArray(result.value)) {
       state.scm.repos = result.value;
-      if (!state.scm.activeRepo || !state.scm.repos.some((r) => r.path === state.scm.activeRepo)) {
-        state.scm.activeRepo = state.scm.repos[0]?.path || state.root;
-      }
+      state.scm.activeRepo = pickActiveRepo(state.scm.repos, state.scm.activeRepo, root);
       render();
     }
   } catch (err) { console.error("Failed to load repos:", err); }
@@ -40,11 +45,19 @@ export async function loadGitStatus(deps: ActionsDeps) {
 
   if (!state.root) return;
 
+  // Bind this request to the active working tree: a response that lands after
+  // a repo/root switch (or after a newer status request) is discarded before
+  // it can write state, render, or refresh commit history.
+  const target = gitRoot(state);
+  const seq = ++state.scm.statusSeq;
+
   const hadStatus = !!state.scm.gitStatus;
 
   try {
 
-    const result = await (await fetch(`/solution-explorer/git-status?root=${encodeURIComponent(gitRoot(state))}`)).json();
+    const result = await (await fetch(`/solution-explorer/git-status?root=${encodeURIComponent(target)}`)).json();
+
+    if (seq !== state.scm.statusSeq || gitRoot(state) !== target) return;
 
     if (result.ok) {
 
@@ -86,6 +99,8 @@ export async function loadGitStatus(deps: ActionsDeps) {
     }
 
   } catch {}
+
+  if (seq !== state.scm.statusSeq || gitRoot(state) !== target) return;
 
   // First load renders the panel; later loads update only
   // the SCM region and the badge, leaving the tree alone.
@@ -169,6 +184,5 @@ export async function doCommit(deps: ActionsDeps) {
   }
   state.scm.committing = false;
   render();
-  console.log("[sol-exp] doCommit -> loadRecentCommits", Date.now());
   await deps.loadRecentCommits(deps);
 }
