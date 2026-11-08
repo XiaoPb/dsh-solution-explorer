@@ -58,7 +58,9 @@ export const gitReadGet: Record<string, Handler> = {
     const count = Math.min(parseInt(query.count || '20', 10), 100)
     const skip = Math.max(parseInt(query.skip || '0', 10), 0)
     // --parents feeds the client-side graph lane algorithm (merge edges).
-    const logArgs = ['log', `--max-count=${count}`]
+    // --topo-order keeps a side branch's commits together (like VS Code's
+    // graph) instead of interleaving equal-timestamp commits from branches.
+    const logArgs = ['log', '--topo-order', `--max-count=${count}`]
     if (skip > 0) logArgs.push(`--skip=${skip}`)
     logArgs.push('--format=%H|%P|%h|%an|%ae|%at|%s')
     const result = git(logArgs, root)

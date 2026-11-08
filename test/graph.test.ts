@@ -12,7 +12,7 @@ import type { GraphLaneDraw, GraphRowDraw } from '../src/client/scm/graph.ts'
 import type { CommitRow } from '../src/client/state/store.ts'
 
 /** Lane width used by graph.ts; every coordinate must be a multiple of it. */
-const LANE_W = 14
+const LANE_W = 11
 const HEX = /^#[0-9a-f]{6}$/i
 
 function row(hash: string, parents: string[] = [], extra: Partial<CommitRow> = {}): CommitRow {

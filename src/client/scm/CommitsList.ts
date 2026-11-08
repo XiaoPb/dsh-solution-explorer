@@ -15,8 +15,11 @@ import { gitStatusClass } from '../explorer/file-kind.ts'
 import { planGraph, type GraphRowDraw } from './graph.ts'
 import type { CommitState } from '../state/store.ts'
 
-const ROW_H = 20
-const NODE_R = 3
+// Must equal the CSS height of one `.sol-exp-commit-item`: the SVG fills the
+// whole row so lane lines are continuous across rows (no inter-row gaps).
+const ROW_H = 28
+const NODE_R = 4
+const MERGE_R = 5.5
 
 /** Actions the commits list needs. */
 export interface CommitsActions {
@@ -31,29 +34,51 @@ export interface CommitsListProps {
 }
 
 /** One row's graph column, drawn as React SVG elements. */
-function GraphSvg({ draw }: { draw: GraphRowDraw }): ReactNode {
+function GraphSvg({ draw, merge }: { draw: GraphRowDraw; merge: boolean }): ReactNode {
   const children: ReactNode[] = []
+  const nodeR = merge ? MERGE_R : NODE_R
   draw.transitions.forEach((tr, i) => {
     children.push(h('path', {
       key: 't' + i,
       d: `M ${tr.x1} 0 C ${tr.x1} ${ROW_H / 2}, ${tr.x2} ${ROW_H / 2}, ${tr.x2} ${ROW_H}`,
-      fill: 'none', stroke: tr.color, strokeWidth: 2, opacity: 0.7,
+      fill: 'none', stroke: tr.color, strokeWidth: 2, strokeLinecap: 'round', opacity: 0.9,
     }))
   })
   draw.lanes.forEach((lane, i) => {
     if (!lane.node) {
-      children.push(h('line', { key: 'l' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2, opacity: 0.55 }))
+      children.push(h('line', { key: 'l' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
       return
     }
-    children.push(h('line', { key: 'u' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H / 2 - NODE_R, stroke: lane.color, strokeWidth: 2 }))
-    children.push(lane.unpushed
-      ? h('circle', { key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: NODE_R + 1, fill: 'none', stroke: 'var(--dsw-alias-label-primary)', strokeWidth: 2.5 })
-      : h('circle', { key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: NODE_R, fill: lane.color }))
+    children.push(h('line', { key: 'u' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H / 2 - nodeR, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
+    if (merge) {
+      // VS Code draws a merge commit as a hollow ring; the lane line stops at
+      // its edge and restarts below, so the merge point reads distinctly.
+      children.push(h('circle', {
+        key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: nodeR,
+        fill: 'var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-layer-2))',
+        stroke: lane.color, strokeWidth: 2,
+      }))
+      children.push(h('circle', { key: 'ci' + i, cx: lane.x, cy: ROW_H / 2, r: 1.8, fill: lane.color }))
+    } else {
+      // Normal commits are filled with their lane color; "unpushed" adds an
+      // outer ring instead of replacing the fill (it must never turn every
+      // node into a hollow ring).
+      children.push(h('circle', { key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: nodeR, fill: lane.color }))
+    }
+
     if (lane.hasParent) {
-      children.push(h('line', { key: 'd' + i, x1: lane.x, y1: ROW_H / 2 + NODE_R, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2 }))
+      children.push(h('line', { key: 'd' + i, x1: lane.x, y1: ROW_H / 2 + nodeR, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
     }
     lane.forks.forEach((f, fi) => {
-      children.push(h('line', { key: 'f' + i + '-' + fi, x1: lane.x, y1: ROW_H / 2 + NODE_R, x2: f.x, y2: ROW_H, stroke: f.color, strokeWidth: 2 }))
+      if (f.x === lane.x) return
+      // Smooth S-curve from the node to the parent lane at the row bottom, so
+      // the merged branch flows into the next row instead of a hard diagonal.
+      const y1 = ROW_H / 2 + nodeR
+      children.push(h('path', {
+        key: 'f' + i + '-' + fi,
+        d: `M ${lane.x} ${y1} C ${lane.x} ${y1 + 8}, ${f.x} ${ROW_H - 8}, ${f.x} ${ROW_H}`,
+        fill: 'none', stroke: f.color, strokeWidth: 2, strokeLinecap: 'round',
+      }))
     })
   })
   return h('svg', { className: 'sol-exp-graph-svg', width: draw.width, height: ROW_H }, children)
@@ -114,7 +139,8 @@ export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
           'data-hash': c.hash,
           onClick: () => actions.commitDetail(c.hash),
         },
-          h('span', { className: 'sol-exp-graph', style: { display: 'flex', flexShrink: 0 } }, h(GraphSvg, { draw: plans[i] })),
+          h('span', { className: 'sol-exp-graph', style: { display: 'flex', flexShrink: 0 } },
+            h(GraphSvg, { draw: plans[i], merge: (c.parents?.length ?? 0) > 1 })),
           h('span', { className: 'sol-exp-commit-hash', style: { flexShrink: 0 } }, c.shortHash),
           h('span', { className: 'sol-exp-commit-msg', style: { minWidth: 0 } }, c.message.substring(0, 60) + (c.message.length > 60 ? '...' : '')),
           h('span', { className: 'sol-exp-commit-date', style: { flexShrink: 0 } }, relTime(c.timestamp)),

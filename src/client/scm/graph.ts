@@ -6,10 +6,14 @@
 import type { CommitState, CommitRow } from "../state/store.ts"
 
 /** Lane color palette (8 colors; wraps for >8 simultaneous branches). */
-const GRAPH_COLORS = ["#e2b714", "#4ec9b0", "#58a6ff", "#d2a8ff", "#ff7b72", "#79c0ff", "#7ee787", "#ffa657"];
+// Main line is blue (VS Code's `historyItemRefColor` / chartsBlue); side
+// branches rotate through the Source Control Graph defaults
+// (`scmGraph.foreground1..5`: amber, pink, brown, teal, purple) exactly like
+// VS Code's color registry rotation.
+const GRAPH_COLORS = ["#3794FF", "#FFB000", "#DC267F", "#994F00", "#40B0A6", "#B66DFF"];
 
-/** Width of one lane in SVG pixels. */
-const LANE_W = 14;
+/** Width of one lane in SVG pixels (VS Code's SWIMLANE_WIDTH is 11). */
+const LANE_W = 11;
 
 /** Drop the selected inline commit detail (called when the list reloads). */
 export function resetCommitDetail(commits: CommitState) {
@@ -47,12 +51,11 @@ export interface GraphRowDraw {
 export function planGraph(rows: readonly CommitRow[]): GraphRowDraw[] {
   const colorOf = (color: number): string => GRAPH_COLORS[color % GRAPH_COLORS.length];
   const xOf = (laneIndex: number): number => laneIndex * LANE_W + LANE_W / 2;
-  const colorsOf = (list: readonly { color: number }[]): Set<number> => new Set(list.map((lane) => lane.color));
-  const allocColor = (used: Set<number>): number => {
-    for (let c = 0; c < GRAPH_COLORS.length; c++) if (!used.has(c)) return c;
-    // Palette exhausted (>8 live lanes): wrap deterministically.
-    return used.size % GRAPH_COLORS.length;
-  };
+  // VS Code advances a global color index for every new lane instead of
+  // reusing freed colors, so two different branches never share a color while
+  // fewer than five are alive.
+  let colorSeq = 0;
+  const allocColor = (): number => colorSeq++ % GRAPH_COLORS.length;
 
   let lanes: { hash: string; color: number }[] = [];
   let prevLanes: { hash: string; color: number }[] = [];
@@ -64,14 +67,13 @@ export function planGraph(rows: readonly CommitRow[]): GraphRowDraw[] {
     if (idx === -1) {
       // The commit owns no lane yet (page boundary / extra head): give it one.
       idx = lanes.length;
-      lanes = lanes.concat([{ hash: commit.hash, color: allocColor(colorsOf(lanes)) }]);
+      lanes = lanes.concat([{ hash: commit.hash, color: allocColor() }]);
     }
     const node = lanes[idx];
     const nodeX = xOf(idx);
 
     // The commit's own lane disappears; its parents take/reuse lanes below it.
     const next = lanes.slice(0, idx).concat(lanes.slice(idx + 1));
-    const used = colorsOf(next);
     const forks: { x: number; color: string }[] = [];
     let continuesStraight = false;
 
@@ -88,17 +90,14 @@ export function planGraph(rows: readonly CommitRow[]): GraphRowDraw[] {
       if (p === 0) {
         // First parent keeps the node's column and color (continuous main line).
         next.splice(Math.min(idx, next.length), 0, { hash: parent, color: node.color });
-        used.add(node.color);
         continuesStraight = true;
       } else {
         // Additional parents fork into fresh lanes at the right edge.
-        const color = allocColor(used);
-        used.add(color);
+        const color = allocColor();
         forks.push({ x: xOf(next.length), color: colorOf(color) });
         next.push({ hash: parent, color });
       }
     }
-    if (!continuesStraight) used.delete(node.color);
 
     // Safety net: a parent hash must own at most one lane.
     const seen = new Set<string>();
