@@ -26,7 +26,7 @@
 | 会不会碰坏现有手势 / 工作台 | 不会。本次不新增任何全局触摸监听，不改 `gestures.ts` / `gesture-guard.ts` / `native-rightbar.ts`。信息头只增加一个普通按钮（关闭），复用 `commands.togglePanel`。 |
 | 最大风险 | `env(safe-area-inset-*)` 在宿主 WebView 里可能为 0（官方 `index.html` 的 viewport 没有 `viewport-fit=cover`）。因此信息头自身必须有 `--sol-exp-top-clearance-min` + `--sol-exp-info-row-height` 的 token 兜底，不能把“不被遮挡”完全押在 `env()` 上。 |
 | 推荐版本 | `1.1.0`（新增手机信息头与多组触屏可访问性调整，属于用户可见的 minor 变更）。 |
-| 当前实现 | P0 + P1 + P2 已落地：token 层、信息头、安全区、标题栏下移、44px 触控、SCM 常显、搜索输入、底部安全区、toast/菜单、底部操作条、`visualViewport` 键盘跟随、横竖屏切换。仍未做：`scripts/check-style-tokens.mjs`。详见 §10。 |
+| 当前实现 | P0 + P1 + P2 已落地：token 层、信息头、安全区、标题栏下移、44px 触控、SCM 常显、搜索输入、底部安全区、toast/菜单、顶部上下文工具条、`visualViewport` 键盘跟随、横竖屏切换。仍未做：`scripts/check-style-tokens.mjs`。详见 §10。 |
 
 ---
 
@@ -177,9 +177,9 @@ sheet 的 `padding-bottom` 为 0，终端、SCM 提交按钮、toast、模态框
 
 `.sol-exp-content` 等滚动容器没有 `overscroll-behavior: contain`。在列表顶端继续下拉时，移动浏览器可能触发整页下拉刷新；在 sheet 里体感像“面板被弹走”。
 
-#### P2-1　主要操作都在屏幕上半部
+#### P2-1　主要操作的可达性与注意力
 
-新建文件、新建文件夹、刷新、关闭都在顶部；6.7 英寸手机上单手很难够到。P2 可把视图操作移到拇指区的底部操作条，或至少提供长按菜单。
+新建文件、新建文件夹、刷新、关闭都在顶部；6.7 英寸手机上单手很难够到。曾按“拇指区”思路把操作放到**底部操作条**，但评估后认为这些是低频上下文动作，底部条的注意力/层级/与宿主导航冲突成本更高；最终改为**Tab 下方的顶部工具条**。取舍见 §5.8.1。
 
 #### P2-2　终端触控不友好
 
@@ -950,7 +950,7 @@ syncViewport()
 - `applyGrid()` 的宽布局分支会撤销 sheet 的内联 `position/inset/width/height/z-index/border`，恢复相对列和 `z-index:11`；
 - 旋转回竖屏时重新设置 sheet 的内联几何。
 
-**已验证**：CDP 模拟 `landscape-primary`（1069×508）后，`data-sol-exp-sheet` 移除、列变为 `position:relative; width:280px`、信息头/底部条隐藏；恢复 `portrait-primary` 后重新变回 fixed 全屏、信息头/底部条显示。模拟平板竖屏 800×1200 时保持 `position:relative` 的 280px 列，不显示信息头/底部条；恢复手机 457×962 后重新变回 sheet。
+**已验证**：CDP 模拟 `landscape-primary`（1069×508）后，`data-sol-exp-sheet` 移除、列变为 `position:relative; width:280px`、信息头/工具条隐藏；恢复 `portrait-primary` 后重新变回 fixed 全屏、信息头/工具条显示。模拟平板竖屏 800×1200 时保持 `position:relative` 的 280px 列，不显示信息头/工具条；恢复手机 457×962 后重新变回 sheet。
 
 ### 5.7 上下文菜单 / toast / 模态框的边界
 
@@ -965,29 +965,48 @@ syncViewport()
 - toast：改内联样式为 `.sol-exp-toast` class，见 §5.3.6；位置/尺寸全部走 token。
 - 模态框：加 padding，`max-height: calc(100dvh - var(--sol-exp-safe-top) - var(--sol-exp-safe-bottom))`，内部滚动；输入框 `font-size: var(--sol-exp-input-font-size)`（coarse）。
 
-### 5.8 底部操作条（P2，已实现）
+### 5.8 顶部上下文工具条（P2，已实现）
 
-手机 sheet 下，Explorer 的操作从顶部视图头移到拇指区：
+手机 sheet 下，Explorer/SCM 的操作作为一行**工具条**放在 Tab 行下方，而不是底部：
 
 ```text
 ┌──────────────────────────────┐
-│ ...内容...                    │
+│ 安全区                        │
+│ 📁 工作区  ⑂ main ↑2 3   ✕   │ 信息头
 ├──────────────────────────────┤
-│  ⌄  ⌃  ＋文件  ＋文件夹  ⟳  │ var(--sol-exp-touch-target)
+│ [文件] [搜索] [SCM] [终端]    │ Tab 行
 ├──────────────────────────────┤
-│  安全区（var(--sol-exp-safe-bottom)） │
+│          ⌄  ⌃  ＋文件  ＋夹  ⟳ │ 工具条（44px，右对齐）
+├──────────────────────────────┤
+│ 文件树 / 搜索 / SCM 内容      │
+├──────────────────────────────┤
+│ 安全区                        │
 └──────────────────────────────┘
 ```
 
 实现：
 
-- 新增 `layout/MobileActionBar.ts`：Explorer 显示展开/收起/新建文件/新建文件夹/刷新 5 个按钮；SCM 只显示刷新；Search 不显示。
-- `PanelRoot` 在 `.sol-exp-body` 之后渲染；CSS 默认 `display:none`，仅 `[data-sol-exp-sheet]` 显示。
+- 新增 `layout/MobileToolbar.ts`：Explorer 显示展开/收起/新建文件/新建文件夹/刷新 5 个按钮；SCM 只显示刷新；Search 不显示。
+- `PanelRoot` 在 `ActivityBar` 之后、`.sol-exp-body` 之前渲染；CSS 默认 `display:none`，仅 `[data-sol-exp-sheet]` 显示。
+- 工具条右对齐、44px 高、按钮 44×44；与 Tab 行之间用 `border-bottom` 分隔，**没有选中态/下划线**，避免被误读成第二个 Tab。
 - 手机 sheet 下 `.sol-exp-header` 整体 `display:none`，避免同一操作出现两份。
-- 按钮 44×44，圆角/颜色/焦点环全部走 token；底部安全区由 `.sol-exp-panel` 的 `padding-bottom` 负责。
-- 终端位于宿主中心列，不在本插件面板内，因此不与底部条争位。
+- 底部安全区仍由 `.sol-exp-panel` 的 `padding-bottom` 负责，底部不再有操作条。
 
-**已验证**：AVD 上底部条高 44、5 个按钮均 44×44，位于 `top=918 / bottom=962`（视口 962）；点击刷新/展开/收起无异常。Search 页无底部条。
+**已验证**：AVD 上工具条位于 `top=100.38`（Tab 行底部）、高 44、5 个按钮均 44×44（右对齐），内容区从 `top=144.38` 开始；点击刷新/展开/收起无异常。Search 页无工具条；SCM 页只有 1 个刷新按钮。
+
+#### 5.8.1 为什么从底部改到顶部
+
+| 维度 | 顶部 Tab 下工具条 | 底部操作条 |
+| --- | --- | --- |
+| 注意力 / 发现性 | 打开面板先看顶部；动作与 Tab 同组，扫描路径短 | 需要视线下移，容易被内容隔断 |
+| 信息层级 | 信息头 → Tab → 当前视图动作 → 内容 | 动作与内容混在底部，像全局导航 |
+| 拇指可达性 | 较差，6.7 英寸屏顶部要换手 | 更好，Fitts 定律下底部更容易点 |
+| 操作频率 | 适合低频上下文动作（新建/刷新/展开） | 适合高频主操作；当前动作并不高频 |
+| 宿主导航冲突 | 不占用底部 | DSH Mobile 底部有 5 项导航，关闭面板后同位置功能变化，易形成肌肉记忆错误 |
+| 键盘 / 安全区 | 基本不受影响 | 软键盘弹起时容易被顶走/争空间 |
+| 垂直成本 | 44px | 44px，二者相同 |
+
+结论：**可达性不能单独决定位置**；这些动作不是高频连续操作，顶部带来的可发现性、层级清晰和宿主共存更重要。若未来出现真正高频的单手动作，再单独加一个 FAB 或底部动作面板，而不是恢复整条底部栏。
 
 ### 5.9 文案
 
@@ -1022,7 +1041,7 @@ syncViewport()
 | 0 | 基线：在 AVD/真机截取当前 sheet 顶部、测 `env()` / `--dshm-safe-top` 实际值、量当前行高与按钮尺寸 | 有一张带状态栏的对比图 + 一组 DOM 数字 | 0.5d |
 | 1 | P0：`data-sol-exp-sheet` + `MobileHeader` + Token 层 + 安全区 + 标题栏下移 + 视图头去重 | 刘海/状态栏不再压住任何按钮；桌面无变化；新增规则无裸尺寸 | 1.5d |
 | 2 | P1：coarse 触控块、SCM 常显操作、搜索输入、底部安全区、overscroll | 所有主要控件 ≥ `--sol-exp-touch-target`；SCM 单文件暂存/放弃可点 | 1d |
-| 3 | P1/P2：visualViewport 键盘处理、底部操作条、横竖屏、上下文菜单/模态/toast 安全区、终端触控 | 键盘/视口缩小时面板跟随；横屏恢复宽布局；底部操作可达 | 1.5d |
+| 3 | P1/P2：visualViewport 键盘处理、顶部上下文工具条、横竖屏、上下文菜单/模态/toast 安全区、终端触控 | 键盘/视口缩小时面板跟随；横屏恢复宽布局；工具条在 Tab 下方可达 | 1.5d |
 | 4 | 回归：桌面 + 手机 + 平板 + 键盘/旋转/终端；构建与发布 | §7 全绿；`1.1.0` 可发 | 0.5d |
 
 > 阶段 1–3 已实施（见 §10）；阶段 4 的桌面/暗色/旋转/SCM 样式/键盘模拟已完成，真机刘海与真实 Git 操作仍需设备条件。
@@ -1033,9 +1052,9 @@ syncViewport()
 | --- | --- | --- |
 | `src/client/shared/labels.ts` | **新增**：`workspaceName` / `syncLabel` / `isUsableBranch` 纯函数（不 import React） | ~30 行 |
 | `src/client/layout/MobileHeader.ts` | **新增**：信息头组件（消费 `labels.ts`） | ~82 行 |
-| `src/client/layout/MobileActionBar.ts` | **新增**：手机底部操作条（Explorer 5 项 / SCM 刷新） | ~60 行 |
-| `src/client/PanelRoot.ts` | 渲染 `MobileHeader` + `MobileActionBar` | ~3 行 |
-| `src/client/styles.ts` | `body` Token 层、信息头、底部条、上游几何、coarse 触控块、底部安全区、overscroll、视口高度 | ~350 行 |
+| `src/client/layout/MobileToolbar.ts` | **新增**：手机顶部上下文工具条（Explorer 5 项 / SCM 刷新） | ~60 行 |
+| `src/client/PanelRoot.ts` | 渲染 `MobileHeader` + `MobileToolbar`（工具条在 ActivityBar 之后） | ~3 行 |
+| `src/client/styles.ts` | `body` Token 层、信息头、顶部工具条、上游几何、coarse 触控块、底部安全区、overscroll、视口高度 | ~350 行 |
 | `src/client/layout/grid.ts` | 手机分支置/清 `data-sol-exp-sheet`；宽布局撤销 sheet 内联几何 | ~16 行 |
 | `src/client/touch/form-factor.ts` | `isPortraitPhone` 读取 `screen.orientation`，横屏/键盘不误判 | ~31 行 |
 | `src/client/locales.ts` | 5 个新 key（zh/en） | ~10 行 |
@@ -1051,7 +1070,7 @@ syncViewport()
 
 ### 6.3 提交建议
 
-实际提交按“计划 → 纯函数 → 信息头 → Token/安全区 → 浮层 → 背景作用域 → 底部条/视口”拆分，见 §10.1。手机端主变更与触控/浮层修复可独立回滚；`chore(release): 1.1.0` 尚未执行。
+实际提交按“计划 → 纯函数 → 信息头 → Token/安全区 → 浮层 → 背景作用域 → 工具条/视口 → 工具条上移”拆分，见 §10.1。手机端主变更与触控/浮层修复可独立回滚；`chore(release): 1.1.0` 尚未执行。
 
 ---
 
@@ -1159,14 +1178,14 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 
 | 覆盖项 | 方法 | 结果 |
 | --- | --- | --- |
-| 桌面 base 样式 | Edge headless + 真实 `STYLES` 的 mock DOM（1250×705，fine pointer） | 信息头/底部条 `display:none`；标题栏高 38、按钮 28；视图头 38、工具栏 28；背景不透明 |
+| 桌面 base 样式 | Edge headless + 真实 `STYLES` 的 mock DOM（1250×705，fine pointer） | 信息头/工具条 `display:none`；标题栏高 38、按钮 28；视图头 38、工具栏 28；背景不透明 |
 | 桌面暗色 | 同一 harness 注入暗色 `--dsw-*` | 面板 `rgb(27,27,28)`，标题 `rgb(249,250,251)`，边框 `rgba(255,255,255,.12)` |
 | 手机暗色 | AVD `Emulation.setEmulatedMedia(prefers-color-scheme: dark)` | 信息头/面板 `rgb(27,27,28)`、文字 `rgb(249,250,251)`，非透明 |
-| 横屏 | CDP `screenOrientation=landscape-primary` + 962×457 | `data-sol-exp-sheet` 移除；列 `position:relative; width:280px`；信息头/底部条隐藏；视图头恢复 |
-| 竖屏恢复 | `clearDeviceMetricsOverride` | sheet 恢复 fixed 全屏；信息头/底部条显示 |
-| 平板竖屏 | CDP 800×1200 portrait | 宽度 >767，保持 `position:relative` 280px 列；信息头/底部条不显示 |
+| 横屏 | CDP `screenOrientation=landscape-primary` + 962×457 | `data-sol-exp-sheet` 移除；列 `position:relative; width:280px`；信息头/工具条隐藏；视图头恢复 |
+| 竖屏恢复 | `clearDeviceMetricsOverride` | sheet 恢复 fixed 全屏；信息头/工具条显示 |
+| 平板竖屏 | CDP 800×1200 portrait | 宽度 >767，保持 `position:relative` 280px 列；信息头/工具条不显示 |
 | 视口缩小（模拟键盘） | CDP 视口 962→666 | 面板高度 666、`--sol-exp-vv-height:666px`；恢复 962 |
-| 底部操作条 | AVD sheet；5 按钮 | 条高 44、按钮 44×44、位于 918–962；刷新/展开/收起可点 |
+| 顶部上下文工具条 | AVD sheet；5 按钮 | 工具条 top=100.38、高 44、按钮 44×44（右对齐），内容区从 144.38 开始；刷新/展开/收起可点；安全区 44 时 top=132.38；暗色背景 `rgb(27,27,28)` |
 | SCM 触屏样式 | AVD 内合成 `.sol-exp-scm-item` DOM | 行内操作 `display:flex`，按钮 44×44，行高 54（含 padding）；toast 安全区 34px 时 bottom 正确上移 |
 | 背景不透明 | AVD 信息头/面板/标题栏 computed style | `rgb(249,250,251)`（亮）/ `rgb(27,27,28)`（暗），非 `rgba(0,0,0,0)` |
 | 刘海安全区 | AVD `Emulation.setSafeAreaInsetsOverride` top=44 / bottom=34 | 信息头 padding-top 44、总高 88；标题栏 top=88；面板 padding-bottom 34；toast bottom=911；恢复 0 后回到 12px/56px |
@@ -1196,7 +1215,8 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 | CSS specificity 与现有 `styles.ts` 规则冲突 | 行高/按钮尺寸被旧规则覆盖 | 合并现有 `@media (pointer: coarse)` 块，只保留一处；新规则放在文件末尾并带 `[data-sol-exp-sheet]` 前缀。 |
 | 横屏时 sheet 内联几何残留 | 面板以 fixed 覆盖横屏布局 | `applyGrid` 宽布局分支显式清除 `position/inset/width/height/z-index/border` 与视口变量；CDP 旋转已验证。 |
 | 软键盘 overlay 型 WebView 不缩视口 | `--sol-exp-vv-height` 不变化，输入框仍可能被键盘盖住 | 监听 `visualViewport` + `window.resize`；adjustResize 型 WebView 会缩。overlay 型需宿主/输入法侧处理，插件无法强制。 |
-| 底部操作条与终端/宿主底栏叠加 | 内容区被压缩 | 终端在宿主中心列，不在本插件面板内；面板底部条位于 `padding-bottom` 安全区之上，CDP/AVD 已量。 |
+| 顶部工具条挤压内容 | 内容区变短 | 工具条固定 44px，与底部条成本相同；手机隐藏原视图头，净增高度有限；后续可做滚动收起。 |
+| 工具条被误读成第二行 Tab | 导航/动作语义混淆 | 工具条无选中态/下划线，右对齐，`role="toolbar"`；Tab 行保留选中态。 |
 | `screen.orientation` 在旧 WebView 不存在 | 横屏判定回退到 media query | `devicePortrait()` 三级回退：`screen.orientation` → `matchMedia` → `innerHeight/innerWidth`；键盘极端压缩时第三级可能误判，前两级优先。 |
 | 未来宿主改 DOM | sheet 标记/信息头失效 | 只依赖本插件自己的 `[data-solution-explorer]` 与 `data-sol-exp-sheet`；不依赖宿主哈希类名。 |
 
@@ -1213,8 +1233,8 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 1. **顶部兜底取值**：`--sol-exp-top-clearance-min` 的默认值是否足够？如果 AVD/真机实测状态栏 24–32px 且 `env()` 为 0，`--sol-exp-info-row-height` 是否已经把文字放到安全位置？建议真机用截图 + `elementsFromPoint` 确认后再调 token，不改规则。
 2. **是否叠加 `--dshm-engine-bar`**：只在空会话叠加，还是所有会话都不叠加？需要真机看原生条是否常驻。
 3. **信息头是否可点击**：目前只做展示 + 关闭；分支/变更点击跳 SCM 仍可后续加。
-4. **已解决：底部操作条**：已按 P2 实现（Explorer 5 项 / SCM 刷新），手机隐藏顶部视图头。
-5. **已解决：视图头标题**：手机整行隐藏，操作移到底部；桌面保留原视图头。
+4. **已解决：操作条位置**：先做了底部条，评估注意力/宿主底部导航冲突后改为**Tab 下方顶部工具条**（Explorer 5 项 / SCM 刷新），手机隐藏顶部视图头。
+5. **已解决：视图头标题**：手机整行隐藏，操作移到顶部工具条；桌面保留原视图头。
 
 ---
 
@@ -1232,6 +1252,7 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
   - `8eea8a2` `fix(phone): resolve sidebar tokens on body so chrome has an opaque background`
   - `6b67366` `fix(phone): add a system-color fallback for sheet chrome`
   - `87f14d4` `feat(phone): add bottom actions and keep the sheet inside the visual viewport`
+  - `75a41f3` `feat(phone): move view actions into a toolbar under the tabs`
 
 ### 10.2 已落地内容
 
@@ -1244,7 +1265,7 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 | 关闭守卫 | `panel.ts` 的 `togglePanel` 对 `isPortraitPhone()` 放行，`autoOpen=false` / `panelWidth=0` 时也能用信息头关闭 |
 | 触控 | 活动栏/视图头 44px；SCM 行/分区/提交按钮放大；SCM 行内操作在 coarse 下常显；搜索输入 44px 高 / 16px 字号 |
 | 底部安全区 | `.sol-exp-panel` 在 sheet 下加 `padding-bottom: var(--sol-exp-safe-bottom)`；toast/右键菜单/模态框同步避让 |
-| 底部操作条 | `layout/MobileActionBar.ts`：Explorer 5 项、SCM 刷新；手机隐藏顶部视图头；44px 按钮 |
+| 顶部工具条 | `layout/MobileToolbar.ts`：Explorer 5 项、SCM 刷新；位于 Tab 下方，右对齐；手机隐藏顶部视图头；44px 按钮 |
 | 键盘 / 视口 | `panel.ts` 监听 `visualViewport` + `resize`，写入 `--sol-exp-vv-height`；sheet 面板高度跟随；卸载清理 |
 | 横竖屏 | `form-factor.ts` 读取 `screen.orientation`；`applyGrid()` 宽布局撤销 sheet 内联几何；旋转回竖屏恢复 |
 | 文案 | `header.noGit` / `header.changes` / `header.workspace` / `header.branch` / `header.close`，zh/en 同步 |
@@ -1259,6 +1280,7 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 5. **横屏判定修正**：`isPortraitPhone` 原先在 `data-dshm-mode="mobile"` 时直接返回 true，横屏仍保持全屏 sheet；现改为 `screen.orientation` 优先，并让宽布局分支撤销 sheet 内联样式。
 6. **键盘实现方式**：没有把列的 `height` 改成内联变量，而是让 sheet 下的 `.sol-exp-panel` 使用 `--sol-exp-vv-height`，避免影响桌面/平板列高度。
 7. **未做**：`scripts/check-style-tokens.mjs`（保留为 CI 加固项）；其余计划项均已落地。
+8. **操作条位置二次调整**：首版按拇指区放在底部；评估注意力、信息层级和 DSH Mobile 底部导航冲突后，改为 Tab 下方的顶部工具条，并调整 §5.8.1 的取舍说明。
 
 ### 10.4 验证结果
 
@@ -1274,13 +1296,13 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
   - 信息头/面板背景计算值为 `rgb(249, 250, 251)`（非 `rgba(0,0,0,0)`），排除首版的透明背景问题；
   - `Emulation.setSafeAreaInsetsOverride` top=44 / bottom=34：信息头 padding-top 44、总高 88，标题栏 top=88，面板 padding-bottom 34，toast bottom=911；恢复后回到 12px/56px；
   - 手机暗色（`prefers-color-scheme: dark`）：面板/信息头 `rgb(27,27,28)`、文字 `rgb(249,250,251)`；
-  - 底部操作条高 44、5 个按钮 44×44、位于视口底部；刷新/展开/收起可点；
-  - CDP 模拟横屏（1069×508）：`data-sol-exp-sheet` 移除、列 `position:relative`、宽 280、信息头/底部条隐藏；恢复竖屏后重新 fixed 全屏；
-  - CDP 模拟平板竖屏（800×1200）：宽度 >767，保持 280px 普通列，不显示信息头/底部条；恢复手机 457×962 后回到 sheet；
+  - 顶部上下文工具条 top=100.38、高 44、5 个按钮 44×44（右对齐），内容区从 144.38 开始；安全区 44 时 top=132.38；暗色背景 `rgb(27,27,28)`；刷新/展开/收起可点；
+  - CDP 模拟横屏（1069×508）：`data-sol-exp-sheet` 移除、列 `position:relative`、宽 280、信息头/工具条隐藏；恢复竖屏后重新 fixed 全屏；
+  - CDP 模拟平板竖屏（800×1200）：宽度 >767，保持 280px 普通列，不显示信息头/工具条；恢复手机 457×962 后回到 sheet；
   - CDP 视口 962→666：面板高度/`--sol-exp-vv-height` 同步 666，恢复 962；
   - SCM 合成 DOM：`.sol-exp-scm-actions` 在 coarse 下 `display:flex`、按钮 44×44；toast 在安全区 34px 时正确上移；
   - 信息头关闭按钮点击后 sheet `display:none`、`data-sol-exp-sheet` 被移除。
-- 桌面：Edge headless + 真实 `STYLES` 的 mock DOM（1250×705，fine pointer）：信息头/底部条 `display:none`；标题栏 38、按钮 28；视图头 38、工具栏 28；亮/暗背景与文字均正确。
+- 桌面：Edge headless + 真实 `STYLES` 的 mock DOM（1250×705，fine pointer）：信息头/工具条 `display:none`；标题栏 38、按钮 28；视图头 38、工具栏 28；亮/暗背景与文字均正确。
 
 ### 10.5 仍需回归 / 已知限制
 
@@ -1299,13 +1321,13 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 | --- | --- |
 | 手机全屏 sheet / 横屏恢复 | [`grid.ts:91-180`](../src/client/layout/grid.ts#L91-L180) |
 | 面板根 / 活动栏 | [`PanelRoot.ts:52-77`](../src/client/PanelRoot.ts#L52-L77)、[`PanelRoot.ts:104-135`](../src/client/PanelRoot.ts#L104-L135) |
-| Token 层 / 信息头 / 底部条 | [`styles.ts:5-171`](../src/client/styles.ts#L5-L171)、[`styles.ts:665-703`](../src/client/styles.ts#L665-L703) |
+| Token 层 / 信息头 / 顶部工具条 | [`styles.ts:5-171`](../src/client/styles.ts#L5-L171)、[`styles.ts:662-704`](../src/client/styles.ts#L662-L704) |
 | Coarse 触控块 | [`styles.ts:730-795`](../src/client/styles.ts#L730-L795) |
 | SCM 行 / hover 操作 | [`styles.ts:217-283`](../src/client/styles.ts#L217-L283)、[`ScmPanel.ts:108-139`](../src/client/scm/ScmPanel.ts#L108-L139) |
 | 树视图头 | [`TreePanel.ts:248-288`](../src/client/explorer/TreePanel.ts#L248-L288) |
 | 搜索页 | [`SearchPanel.ts:66-80`](../src/client/explorer/SearchPanel.ts#L66-L80) |
 | 手机/横竖屏判定 | [`form-factor.ts:7-49`](../src/client/touch/form-factor.ts#L7-L49) |
-| 信息头 / 底部条组件 | [`MobileHeader.ts:32-82`](../src/client/layout/MobileHeader.ts#L32-L82)、[`MobileActionBar.ts:32-60`](../src/client/layout/MobileActionBar.ts#L32-L60) |
+| 信息头 / 顶部工具条组件 | [`MobileHeader.ts:32-82`](../src/client/layout/MobileHeader.ts#L32-L82)、[`MobileToolbar.ts:32-64`](../src/client/layout/MobileToolbar.ts#L32-L64) |
 | toast / 模态 | [`ui.ts:17-29`](../src/client/shared/ui.ts#L17-L29)、[`styles.ts:680-703`](../src/client/styles.ts#L680-L703) |
 | 右键菜单边界 | [`ContextMenu.ts:35-50`](../src/client/explorer/ContextMenu.ts#L35-L50) |
 
