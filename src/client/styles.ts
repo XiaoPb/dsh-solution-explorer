@@ -659,24 +659,26 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
 /* Phone actions move to the bottom bar; the top view header is redundant. */
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-header { display: none; }
 
-/* ── Phone bottom action bar ─────────────────────────────────────────────
-   Explorer/SCM actions in the thumb zone. Hidden on desktop and on the
-   search tab (whose only control is the query input). */
-.sol-exp-actionbar { display:none; }
+/* ── Phone context toolbar ───────────────────────────────────────────────
+   Sits under the activity tabs so actions stay visually grouped with the
+   current view. Hidden on desktop and on the search tab (whose only control
+   is the query input). Right-aligned like the desktop view header. */
+.sol-exp-mobile-toolbar { display:none; }
 
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-actionbar {
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-mobile-toolbar {
   flex:none;
   display:flex;
   align-items:center;
+  justify-content:flex-end;
   gap:var(--sol-exp-space-2);
   height:var(--sol-exp-touch-target);
   padding:0 var(--sol-exp-space-6);
   box-sizing:border-box;
   background:var(--sol-exp-chrome-bg);
-  border-top:var(--sol-exp-border);
+  border-bottom:var(--sol-exp-border);
 }
 
-.sol-exp-actionbar-btn {
+.sol-exp-mobile-toolbar-btn {
   flex:none;
   width:var(--sol-exp-touch-target);
   height:var(--sol-exp-touch-target);
@@ -692,12 +694,12 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
   touch-action:manipulation;
 }
 
-.sol-exp-actionbar-btn:hover {
+.sol-exp-mobile-toolbar-btn:hover {
   background:var(--sol-exp-hover-bg);
   color:var(--sol-exp-label-primary);
 }
 
-.sol-exp-actionbar-btn:focus-visible {
+.sol-exp-mobile-toolbar-btn:focus-visible {
   outline:var(--sol-exp-focus-width) solid var(--sol-exp-focus-color);
   outline-offset:var(--sol-exp-focus-offset);
 }

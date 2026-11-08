@@ -23,6 +23,7 @@ const zh = {
   'header.workspace': '工作区',
   'header.branch': '分支',
   'header.close': '关闭面板',
+  'header.actions': '视图操作',
 
   // File explorer
   'file.search': '搜索文件...',
@@ -254,6 +255,7 @@ const en: Record<SolutionExplorerKey, string> = {
   'header.workspace': 'Workspace',
   'header.branch': 'Branch',
   'header.close': 'Close panel',
+  'header.actions': 'View actions',
 
   'file.search': 'Search files...',
   'file.open': 'Open file',
