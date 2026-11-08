@@ -71,12 +71,25 @@ function GraphSvg({ draw, merge }: { draw: GraphRowDraw; merge: boolean }): Reac
     }
     lane.forks.forEach((f, fi) => {
       if (f.x === lane.x) return
-      // Smooth S-curve from the node to the parent lane at the row bottom, so
-      // the merged branch flows into the next row instead of a hard diagonal.
-      const y1 = ROW_H / 2 + nodeR
+      // Rounded elbow instead of a steep diagonal: leave the node vertically,
+      // turn into a horizontal run with a quarter arc, then arc back down into
+      // the parent lane - the shape VS Code uses for a branch merging back.
+      const mid = ROW_H / 2
+      const reach = Math.abs(f.x - lane.x)
+      const r = Math.max(2, Math.min(4, reach / 2))
+      const yStep = ROW_H - r
+      const left = f.x < lane.x
+      const sweep = left ? 1 : 0
+      const d = [
+        `M ${lane.x} ${mid}`,
+        `V ${yStep - r}`,
+        `A ${r} ${r} 0 0 ${sweep} ${lane.x + (left ? -r : r)} ${yStep}`,
+        `H ${f.x + (left ? r : -r)}`,
+        `A ${r} ${r} 0 0 ${sweep} ${f.x} ${yStep + r}`,
+      ].join(' ')
       children.push(h('path', {
         key: 'f' + i + '-' + fi,
-        d: `M ${lane.x} ${y1} C ${lane.x} ${y1 + 8}, ${f.x} ${ROW_H - 8}, ${f.x} ${ROW_H}`,
+        d,
         fill: 'none', stroke: f.color, strokeWidth: 2, strokeLinecap: 'round',
       }))
     })
