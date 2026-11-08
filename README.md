@@ -41,19 +41,23 @@
   AGENTS.md). **Diff view**: full-file side-by-side compare with an
   editable right column (Enter splits lines, backspace/delete merges, NBSP
   placeholders), a middle gutter to stage (⤒) or revert (↩) individual hunks,
-  Ctrl+S to save. **Commit Graph**: an SVG history view with
-  branch lanes and merge lines; click a commit to expand its changed files
-  (with file-type icons and status letters M/A/D/R) below the row, hover for
-  a tooltip with the full message, stats, and a GitHub link; plus checkout. **Sync**: fetch / pull / push / sync (pull +
+  Ctrl+S to save. **Commit Graph**: history drawn the way VS Code's Source
+  Control Graph draws it — 11px swimlanes with rounded lane changes, elbow merge
+  connectors, a ring for merge commits and a hollow ring for the checked-out
+  commit, in `--topo-order` so a branch never interleaves with the mainline;
+  click a commit to expand its changed files (with file-type icons and status
+  letters M/A/D/R) below the row, hover for a tooltip with the full message,
+  stats, and a GitHub link; plus checkout. **Sync**: fetch / pull / push / sync (pull +
   push) with ahead/behind counts, each remote-write confirmed. **Branches**:
   switch / create / rename / delete / merge / publish. **Remotes**: add /
   remove / set URL. **Git Init**: initialize a repository from a plain
   directory. **Merge changes**: pull/merge conflicts (UU/AA/DD/…) are
-  detected and listed for manual resolution. **Multi-repo support**:
-  auto-discovers git repositories under the workspace and lets you switch
-  between them; the SCM panel follows the selected repo. **Split panes**: drag
-  the divider between changes and repository to resize, history fills the
-  bottom. Bulk actions live in the section headers; discard all asks for
+  detected and listed for manual resolution. **Repositories and worktrees**:
+  the workspace root wins when it is itself a repository, otherwise direct child
+  repositories are listed; linked worktrees sit next to their repository and
+  switch branch, changes and graph together. **One column**: repository → commit
+  box → changes → graph in a single scrolling column, paging older commits as
+  you reach the bottom. Bulk actions live in the section headers; discard all asks for
   confirmation.
 - **Syntax highlighting** — editor and diff views colorize 15 languages
   (TS/JS/Python/JSON/Markdown/...) with a GitHub Dark theme; the editor
