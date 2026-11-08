@@ -13,13 +13,14 @@ import { t } from '../locales.ts'
 import { relTime } from '../shared/dom.ts'
 import { gitStatusClass } from '../explorer/file-kind.ts'
 import { planGraph, type GraphRowDraw } from './graph.ts'
+import { laneShiftPath, mergeParentPath, SWIMLANE_HEIGHT, SWIMLANE_WIDTH } from './graph-path.ts'
 import type { CommitState } from '../state/store.ts'
 
 // Must equal the CSS height of one `.sol-exp-commit-item`: the SVG fills the
 // whole row so lane lines are continuous across rows (no inter-row gaps).
-const ROW_H = 28
+const ROW_H = SWIMLANE_HEIGHT
 const NODE_R = 4
-const MERGE_R = 5.5
+const MERGE_R = 6
 
 /** Actions the commits list needs. */
 export interface CommitsActions {
@@ -36,64 +37,52 @@ export interface CommitsListProps {
 /** One row's graph column, drawn as React SVG elements. */
 function GraphSvg({ draw, merge }: { draw: GraphRowDraw; merge: boolean }): ReactNode {
   const children: ReactNode[] = []
+  const nodeLane = draw.lanes.find((lane) => lane.node)
+  const nodeIndex = Math.max(0, Math.round(((nodeLane?.x ?? 5.5) - 5.5) / SWIMLANE_WIDTH))
+  const nodeX = 5.5 + nodeIndex * SWIMLANE_WIDTH
   const nodeR = merge ? MERGE_R : NODE_R
-  draw.transitions.forEach((tr, i) => {
+
+  // Draw lane shifts and straight continuations first. VS Code computes these
+  // from each lane's input/output column before drawing any commit circles.
+  draw.lanes.forEach((lane, inputIndex) => {
+    const laneIndex = Math.max(0, Math.round((lane.x - 5.5) / SWIMLANE_WIDTH))
+    const shift = lane.forks.find((fork) => fork.kind === 'shift')
+    const d = shift
+      ? laneShiftPath(laneIndex, Math.max(0, Math.round((shift.x - 5.5) / SWIMLANE_WIDTH)))
+      : `M ${lane.x} 0 V ${SWIMLANE_HEIGHT}`
     children.push(h('path', {
-      key: 't' + i,
-      d: `M ${tr.x1} 0 C ${tr.x1} ${ROW_H / 2}, ${tr.x2} ${ROW_H / 2}, ${tr.x2} ${ROW_H}`,
-      fill: 'none', stroke: tr.color, strokeWidth: 2, strokeLinecap: 'round', opacity: 0.9,
+      key: 'lane-' + inputIndex, d,
+      fill: 'none', stroke: lane.color, strokeWidth: 1, strokeLinecap: 'round',
     }))
   })
-  draw.lanes.forEach((lane, i) => {
-    if (!lane.node) {
-      children.push(h('line', { key: 'l' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
-      return
-    }
-    children.push(h('line', { key: 'u' + i, x1: lane.x, y1: 0, x2: lane.x, y2: ROW_H / 2 - nodeR, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
-    if (merge) {
-      // VS Code draws a merge commit as a hollow ring; the lane line stops at
-      // its edge and restarts below, so the merge point reads distinctly.
-      children.push(h('circle', {
-        key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: nodeR,
-        fill: 'var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-layer-2))',
-        stroke: lane.color, strokeWidth: 2,
-      }))
-      children.push(h('circle', { key: 'ci' + i, cx: lane.x, cy: ROW_H / 2, r: 1.8, fill: lane.color }))
-    } else {
-      // Normal commits are filled with their lane color; "unpushed" adds an
-      // outer ring instead of replacing the fill (it must never turn every
-      // node into a hollow ring).
-      children.push(h('circle', { key: 'c' + i, cx: lane.x, cy: ROW_H / 2, r: nodeR, fill: lane.color }))
-    }
 
-    if (lane.hasParent) {
-      children.push(h('line', { key: 'd' + i, x1: lane.x, y1: ROW_H / 2 + nodeR, x2: lane.x, y2: ROW_H, stroke: lane.color, strokeWidth: 2, strokeLinecap: 'round' }))
-    }
-    lane.forks.forEach((f, fi) => {
-      if (f.x === lane.x) return
-      // Rounded elbow instead of a steep diagonal: leave the node vertically,
-      // turn into a horizontal run with a quarter arc, then arc back down into
-      // the parent lane - the shape VS Code uses for a branch merging back.
-      const mid = ROW_H / 2
-      const reach = Math.abs(f.x - lane.x)
-      const r = Math.max(2, Math.min(4, reach / 2))
-      const yStep = ROW_H - r
-      const left = f.x < lane.x
-      const sweep = left ? 1 : 0
-      const d = [
-        `M ${lane.x} ${mid}`,
-        `V ${yStep - r}`,
-        `A ${r} ${r} 0 0 ${sweep} ${lane.x + (left ? -r : r)} ${yStep}`,
-        `H ${f.x + (left ? r : -r)}`,
-        `A ${r} ${r} 0 0 ${sweep} ${f.x} ${yStep + r}`,
-      ].join(' ')
+  // Add non-first-parent connectors using VS Code's 11px parent arc + join.
+  draw.lanes.forEach((lane, inputIndex) => {
+    lane.forks.forEach((fork, forkIndex) => {
+      if (fork.kind !== 'merge') return
+      const parentIndex = Math.max(0, Math.round((fork.x - 5.5) / SWIMLANE_WIDTH))
       children.push(h('path', {
-        key: 'f' + i + '-' + fi,
-        d,
-        fill: 'none', stroke: f.color, strokeWidth: 2, strokeLinecap: 'round',
+        key: `merge-${inputIndex}-${forkIndex}`,
+        d: mergeParentPath(nodeIndex, parentIndex),
+        fill: 'none', stroke: fork.color, strokeWidth: 1, strokeLinecap: 'round',
       }))
     })
   })
+
+  // The node is the top layer; paths terminate behind its ring, matching the
+  // VS Code renderer's draw-paths-first, draw-circle-last ordering.
+  if (nodeLane) {
+    if (merge) {
+      children.push(h('circle', {
+        key: 'node-outer', cx: nodeX, cy: ROW_H / 2, r: nodeR,
+        fill: 'var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-layer-2))',
+        stroke: nodeLane.color, strokeWidth: 2,
+      }))
+      children.push(h('circle', { key: 'node-inner', cx: nodeX, cy: ROW_H / 2, r: 2, fill: nodeLane.color }))
+    } else {
+      children.push(h('circle', { key: 'node', cx: nodeX, cy: ROW_H / 2, r: nodeR, fill: nodeLane.color }))
+    }
+  }
   return h('svg', { className: 'sol-exp-graph-svg', width: draw.width, height: ROW_H }, children)
 }
 

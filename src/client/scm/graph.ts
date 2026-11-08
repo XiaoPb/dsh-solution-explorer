@@ -1,139 +1,113 @@
-/**
- * Commit-graph planning — SCM domain. Pure function over the loaded commit rows.
- * @module dsh-solution-explorer/client/scm/graph
- */
+import type { CommitRow, CommitState } from '../state/store.ts'
 
-import type { CommitState, CommitRow } from "../state/store.ts"
+const COLORS = ['#3794FF', '#FFB000', '#DC267F', '#994F00', '#40B0A6', '#B66DFF']
+const LANE_W = 11
+const xAt = (index: number): number => 5.5 + index * LANE_W
 
-/** Lane color palette (8 colors; wraps for >8 simultaneous branches). */
-// Main line is blue (VS Code's `historyItemRefColor` / chartsBlue); side
-// branches rotate through the Source Control Graph defaults
-// (`scmGraph.foreground1..5`: amber, pink, brown, teal, purple) exactly like
-// VS Code's color registry rotation.
-const GRAPH_COLORS = ["#3794FF", "#FFB000", "#DC267F", "#994F00", "#40B0A6", "#B66DFF"];
-
-/** Width of one lane in SVG pixels (VS Code's SWIMLANE_WIDTH is 11). */
-const LANE_W = 11;
-
-/** Drop the selected inline commit detail (called when the list reloads). */
-export function resetCommitDetail(commits: CommitState) {
-  commits.graphDetailOpen = "";
+export interface GraphForkDraw {
+  x: number
+  color: string
+  kind: 'shift' | 'merge'
 }
 
-/** One lane's drawing plan for a row. */
 export interface GraphLaneDraw {
   x: number
   color: string
   node: boolean
   unpushed: boolean
   hasParent: boolean
-  forks: { x: number; color: string }[]
+  forks: GraphForkDraw[]
 }
 
-/** One row's graph drawing plan (pure: no shared state mutation). */
 export interface GraphRowDraw {
   width: number
   transitions: { x1: number; x2: number; color: string }[]
   lanes: GraphLaneDraw[]
 }
 
-/**
- * Plan the commit graph for the whole loaded list in one deterministic pass.
- * Every lane lives in local state, so React can render the graph without
- * mutating the store per row.
- *
- * Parent relationships are the only source of lanes: a parent hash that already
- * owns a lane is reused (never duplicated), and reaching it from a different
- * column adds a connector to the node's `forks` instead of a phantom lane.
- * @param rows - loaded commit rows, newest first.
- * @returns one drawing plan per row.
- */
-export function planGraph(rows: readonly CommitRow[]): GraphRowDraw[] {
-  const colorOf = (color: number): string => GRAPH_COLORS[color % GRAPH_COLORS.length];
-  const xOf = (laneIndex: number): number => laneIndex * LANE_W + LANE_W / 2;
-  // VS Code advances a global color index for every new lane instead of
-  // reusing freed colors, so two different branches never share a color while
-  // fewer than five are alive.
-  let colorSeq = 0;
-  const allocColor = (): number => colorSeq++ % GRAPH_COLORS.length;
+export function resetCommitDetail(commits: CommitState): void {
+  commits.graphDetailOpen = ''
+}
 
-  let lanes: { hash: string; color: number }[] = [];
-  let prevLanes: { hash: string; color: number }[] = [];
-  const out: GraphRowDraw[] = [];
+/** Plan commit rows by mapping input lanes to their output lanes. */
+export function planGraph(rows: readonly CommitRow[]): GraphRowDraw[] {
+  let lanes: { hash: string; color: string }[] = []
+  let nextColor = 1
+  const plans: GraphRowDraw[] = []
 
   for (const commit of rows) {
-    const parents = commit.parents ?? [];
-    let idx = lanes.findIndex((lane) => lane.hash === commit.hash);
-    if (idx === -1) {
-      // The commit owns no lane yet (page boundary / extra head): give it one.
-      idx = lanes.length;
-      lanes = lanes.concat([{ hash: commit.hash, color: allocColor() }]);
+    const parents = commit.parents ?? []
+    let nodeIndex = lanes.findIndex((lane) => lane.hash === commit.hash)
+    if (nodeIndex < 0) {
+      nodeIndex = lanes.length
+      lanes.push({ hash: commit.hash, color: COLORS[nodeIndex === 0 ? 0 : nextColor++ % COLORS.length] })
     }
-    const node = lanes[idx];
-    const nodeX = xOf(idx);
 
-    // The commit's own lane disappears; its parents take/reuse lanes below it.
-    const next = lanes.slice(0, idx).concat(lanes.slice(idx + 1));
-    const forks: { x: number; color: string }[] = [];
-    let continuesStraight = false;
-
-    for (let p = 0; p < parents.length; p++) {
-      const parent = parents[p];
-      const existing = next.findIndex((lane) => lane.hash === parent);
-      if (existing !== -1) {
-        // Parent already owns a lane: connect to it, never add a duplicate lane.
-        const x = xOf(existing);
-        if (p === 0 && x === nodeX) continuesStraight = true;
-        else forks.push({ x, color: colorOf(next[existing].color) });
-        continue;
-      }
-      if (p === 0) {
-        // First parent keeps the node's column and color (continuous main line).
-        next.splice(Math.min(idx, next.length), 0, { hash: parent, color: node.color });
-        continuesStraight = true;
-      } else {
-        // Additional parents fork into fresh lanes at the right edge.
-        const color = allocColor();
-        forks.push({ x: xOf(next.length), color: colorOf(color) });
-        next.push({ hash: parent, color });
+    const input = lanes
+    const nodeLane = input[nodeIndex]
+    const output: typeof lanes = []
+    if (parents[0]) output.push({ hash: parents[0], color: nodeLane.color })
+    for (let i = 0; i < input.length; i++) {
+      if (i === nodeIndex) continue
+      const lane = input[i]
+      if (!output.some((entry) => entry.hash === lane.hash)) output.push(lane)
+    }
+    for (let p = 1; p < parents.length; p++) {
+      if (!output.some((lane) => lane.hash === parents[p])) {
+        output.push({ hash: parents[p], color: COLORS[nextColor++ % COLORS.length] })
       }
     }
 
-    // Safety net: a parent hash must own at most one lane.
-    const seen = new Set<string>();
-    const deduped = next.filter((lane) => {
-      if (seen.has(lane.hash)) return false;
-      seen.add(lane.hash);
-      return true;
-    });
+    const uniqueOutput = output.filter((lane, i) => output.findIndex((other) => other.hash === lane.hash) === i)
+    const forks = new Map<number, GraphForkDraw[]>()
+    const addFork = (laneIndex: number, fork: GraphForkDraw): void => {
+      const current = forks.get(laneIndex) ?? []
+      current.push(fork)
+      forks.set(laneIndex, current)
+    }
 
-    const transitions: { x1: number; x2: number; color: string }[] = [];
-    prevLanes.forEach((pl, pi) => {
-      const ci = lanes.findIndex((lane) => lane.hash === pl.hash);
-      if (ci !== -1 && ci !== pi) {
-        transitions.push({ x1: xOf(pi), x2: xOf(ci), color: colorOf(pl.color) });
+    // If the first parent was already active on another input lane, the
+    // current node's lane shifts into that existing parent lane (diamond close).
+    if (parents[0]) {
+      const parentOutputIndex = uniqueOutput.findIndex((lane) => lane.hash === parents[0])
+      if (parentOutputIndex >= 0 && parentOutputIndex !== nodeIndex) {
+        addFork(nodeIndex, { x: xAt(parentOutputIndex), color: nodeLane.color, kind: 'shift' })
       }
-    });
+    }
 
-    const laneDraws: GraphLaneDraw[] = lanes.map((lane, i) => ({
-      x: xOf(i),
-      color: colorOf(lane.color),
-      node: i === idx,
-      unpushed: i === idx && !!commit.unpushed,
-      hasParent: i === idx && continuesStraight,
-      forks: i === idx ? forks : [],
-    }));
+    // Every surviving input lane either stays vertical or performs VS Code's
+    // rounded lane shift to its output column.
+    input.forEach((lane, inputIndex) => {
+      const outputIndex = uniqueOutput.findIndex((entry) => entry.hash === lane.hash)
+      if (outputIndex >= 0 && outputIndex !== inputIndex) {
+        addFork(inputIndex, { x: xAt(outputIndex), color: lane.color, kind: 'shift' })
+      }
+    })
 
-    // A row must fit its own lanes, the lanes it hands to the next row, any
-    // connectors reaching further right, and transition curves that start at a
-    // wider previous row (a lane shifting left must not be clipped).
-    const laneCount = Math.max(lanes.length, deduped.length, forks.length);
-    let width = Math.max(LANE_W, laneCount * LANE_W);
-    for (const tr of transitions) width = Math.max(width, tr.x1 + LANE_W / 2, tr.x2 + LANE_W / 2);
-    out.push({ width, transitions, lanes: laneDraws });
+    // VS Code records each non-first parent on the current node lane. The
+    // renderer then draws the parent's arc plus a horizontal join to this node.
+    for (let p = parents.length > 0 ? 1 : 0; p < parents.length; p++) {
+      const parent = parents[p]
+      const outputIndex = uniqueOutput.findIndex((lane) => lane.hash === parent)
+      if (outputIndex < 0) continue
+      addFork(nodeIndex, { x: xAt(outputIndex), color: uniqueOutput[outputIndex].color, kind: 'merge' })
+    }
 
-    prevLanes = lanes.slice();
-    lanes = deduped;
+    const laneDraws = input.map((lane, i) => ({
+      x: xAt(i),
+      color: lane.color,
+      node: i === nodeIndex,
+      unpushed: i === nodeIndex && !!commit.unpushed,
+      hasParent: i === nodeIndex && parents.length > 0,
+      forks: forks.get(i) ?? [],
+    }))
+    plans.push({
+      width: Math.max(LANE_W, input.length * LANE_W, uniqueOutput.length * LANE_W),
+      transitions: [],
+      lanes: laneDraws,
+    })
+    lanes = uniqueOutput
   }
-  return out;
+
+  return plans
 }

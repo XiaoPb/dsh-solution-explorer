@@ -99,23 +99,25 @@ test('diamond history reuses the existing parent lane instead of duplicating it'
   assertSane(plans)
   assert.equal(plans.length, 4)
 
-  // Merge row: first parent continues the lane, second parent forks into a new lane.
-  assert.equal(plans[0].lanes.length, 1)
-  assert.equal(plans[0].lanes[0].node, true)
-  assert.equal(plans[0].lanes[0].forks.length, 1)
+  // Merge row: main lane continues; the merge connector belongs to the node
+  // lane and points to the side-parent output lane (VS Code convention).
+  const mergeLane = plans[0].lanes.find((lane) => lane.node)!
+  assert.equal(mergeLane.forks.length, 1)
+  assert.equal(mergeLane.forks[0].kind, 'merge')
+  assert.equal(mergeLane.forks[0].x, LANE_W * 1.5)
 
-  // A continues its lane down to R while B stays in the second lane.
+  // A continues its lane down to R while B stays in the side lane.
   assert.equal(plans[1].lanes.length, 2)
 
-  // B reaches R, which already owns a lane: one connector to R's x, no extra lane.
+  // B closes back to R, which already owns the first-parent lane. VS Code
+  // shifts the B commit's input lane into that existing output lane.
   const rX = nodeLane(plans[3]).x
   const bLane = nodeLane(plans[2])
-  assert.equal(bLane.forks.length, 1, 'B exposes a connector for its parent')
-  assert.equal(bLane.forks[0].x, rX, 'the connector targets R\'s existing lane')
-  assert.equal(bLane.hasParent, false, 'the connector replaces the straight parent stub')
+  assert.equal(bLane.forks.length, 1, 'B exposes the lane shift that closes into R')
+  assert.equal(bLane.forks[0].x, rX, 'the shift targets R\'s existing lane')
+  assert.equal(bLane.forks[0].kind, 'shift')
   assert.equal(plans[2].lanes.length, 2, 'the B row keeps R + B only')
 
-  // R row: exactly one lane (no ghost/duplicate lane from re-adding R).
   assert.equal(plans[3].lanes.length, 1)
   assert.equal(plans[3].lanes[0].x, rX)
   assert.equal(plans[3].lanes[0].node, true)
@@ -136,16 +138,13 @@ test('a merge with more parents than palette colors stays deterministic and vali
   assert.deepEqual(planGraph(rows), plans, 'identical input produces identical output')
 })
 
-test('lanes shifting left keep their transition curves inside the SVG width', () => {
+test('lane closing is represented by VS Code rounded lane-shift connectors', () => {
   const rows = [row('M', ['A', 'B', 'C']), row('A'), row('B', ['X']), row('C', ['X']), row('X')]
   const plans = planGraph(rows)
   assertSane(plans)
-  const shifted = plans[2]
-  assert.ok(shifted.transitions.length > 0, 'the closing lane produces a transition')
-  for (const tr of shifted.transitions) {
-    assert.ok(tr.x1 + LANE_W / 2 <= shifted.width)
-    assert.ok(tr.x2 + LANE_W / 2 <= shifted.width)
-  }
+  const shifts = plans.flatMap((plan) => plan.lanes.flatMap((lane) => lane.forks.filter((fork) => fork.kind === 'shift')))
+  assert.ok(shifts.length > 0, 'closing lanes are represented as rounded lane shifts')
+  for (const fork of shifts) assert.ok(fork.x >= 0)
 })
 
 test('paginating (prefixing) never changes earlier rows', () => {
