@@ -222,6 +222,9 @@ function TreeNode({ node, depth, tree, clipboard, actions }: {
             className: 'sol-exp-rename-input',
             defaultValue: node.name,
             autoFocus: true,
+            // VS Code behavior: opening rename selects the whole name so typing
+            // replaces it instead of appending to the old name.
+            onFocus: (e) => e.currentTarget.select(),
             onClick: (e) => e.stopPropagation(),
             onKeyDown: (e) => {
               if (e.key === 'Enter') actions.renameCommit(e.currentTarget.value)
