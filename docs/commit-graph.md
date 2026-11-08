@@ -101,3 +101,17 @@
 - 未跟踪/不可达的提交不在图里：`git log` 从 HEAD 出发，多 root 仅出现在
   `--allow-unrelated-histories` 合并后。
 - 图中不显示 ref 标签（分支/远程徽标），只有节点；标签渲染在列表右侧的分支信息里。
+
+## 发版记录（1.1.0）
+
+| 项目 | 值 |
+|---|---|
+| 包版本 | `@xiaopb/dsh-solution-explorer@1.1.0`（`1.0.4` → `1.1.0`；本轮新增工作树与提交图能力，按 minor 递增） |
+| Git tag | `v1.1.0`，指向 `41bc1a9`（`chore(release): 1.1.0`），与 `package.json` 严格一致 |
+| npm dist-tag | `latest = 1.1.0` |
+| Release | https://github.com/XiaoPb/dsh-solution-explorer/releases/tag/v1.1.0 |
+| 发布方式 | `release.yml` + `NPM_TOKEN`，变更说明含 27 个提交 |
+| 校验 | CI（node 22 / 24）通过；Release 里的消费端安装测试通过（tarball + 清单 + 产物契约） |
+
+发布前本地校验：`pnpm test`（65/65）、`pnpm run build`、`pnpm run check`、
+`npm pack --dry-run`；图表另在 Android 模拟器上按 41 提交 / 11 个 merge 的复杂历史复测。
