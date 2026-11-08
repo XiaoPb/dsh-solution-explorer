@@ -1,27 +1,172 @@
 /** Panel, SCM, editor, terminal and settings stylesheet (injected once into
- *  <head> by the styles effect). Uses only --dsw-alias-* tokens per repo rules. */
+ *  <head> by the styles effect). Colors/fonts/radii alias upstream --dsw-*
+ *  tokens; geometry uses the --sol-exp-* semantic tokens defined below. */
 export const STYLES = `
-.sol-exp-panel { height:100%; display:flex; flex-direction:column; background:var(--dsw-specific-sidebar-fill); color:var(--dsw-alias-label-primary); font-size:13px; line-height:20px; user-select:none; overflow:hidden; }
+/* ── Semantic token layer ────────────────────────────────────────────────
+   Upstream exposes colors, fonts, radii, focus rings and motion, but no
+   spacing / size / control-height tokens. Geometry therefore lives here once;
+   every rule below consumes these tokens and never repeats the literals. */
+:root {
+  --sol-exp-touch-target: 44px;
+  --sol-exp-row-height: 38px;
+  --sol-exp-row-height-touch: var(--sol-exp-touch-target);
+  --sol-exp-control-size: 28px;
+  --sol-exp-control-size-touch: var(--sol-exp-touch-target);
+  --sol-exp-info-row-height: var(--sol-exp-touch-target);
+  --sol-exp-icon-size: 16px;
+  --sol-exp-icon-size-sm: 14px;
+  --sol-exp-space-2: 2px;
+  --sol-exp-space-4: 4px;
+  --sol-exp-space-6: 6px;
+  --sol-exp-space-8: 8px;
+  --sol-exp-space-12: 12px;
+  --sol-exp-space-16: 16px;
+  --sol-exp-hairline: .5px;
+  --sol-exp-border: var(--sol-exp-hairline) solid var(--dsw-alias-border-l3);
+  --sol-exp-radius: var(--dsw-radius-sm);
+  --sol-exp-title-font: var(--dsw-font-xs-strong-13, 500 13px/20px var(--dsw-font-family, sans-serif));
+  --sol-exp-meta-font: var(--dsw-font-xxs-12, 12px/18px var(--dsw-font-family, sans-serif));
+  --sol-exp-focus-width: var(--dsw-focus-ring-width, 2px);
+  --sol-exp-focus-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  --sol-exp-focus-offset: -2px;
+  --sol-exp-duration: var(--ds-transition-duration, .2s);
+  --sol-exp-ease: var(--ds-ease-in-out, ease);
+  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill);
+  --sol-exp-label-primary: var(--dsw-alias-label-primary);
+  --sol-exp-label-secondary: var(--dsw-alias-label-secondary);
+  --sol-exp-label-tertiary: var(--dsw-alias-label-tertiary);
+  --sol-exp-hover-bg: var(--dsw-alias-interactive-bg-hover);
+  --sol-exp-top-clearance-min: 12px;
+  --sol-exp-safe-top: max(env(safe-area-inset-top, 0px), var(--dshm-safe-top, 0px), var(--sol-exp-top-clearance-min));
+  --sol-exp-safe-right: max(env(safe-area-inset-right, 0px), var(--dshm-safe-right, 0px), 0px);
+  --sol-exp-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--dshm-safe-bottom, 0px), 0px);
+  --sol-exp-safe-left: max(env(safe-area-inset-left, 0px), var(--dshm-safe-left, 0px), 0px);
+  --sol-exp-scm-action-size: 40px;
+  --sol-exp-tree-row-padding-block: 9px;
+  --sol-exp-input-min-height: var(--sol-exp-touch-target);
+  --sol-exp-input-font-size: var(--dsw-font-base-16-font-size, 16px);
+  --sol-exp-input-line-height: 24px;
+  --sol-exp-terminal-tab-height: var(--sol-exp-touch-target);
+  --sol-exp-terminal-close-size: 32px;
+  --sol-exp-terminal-resize-hit: 12px;
+  --sol-exp-toast-offset: 16px;
+  --sol-exp-toast-max-width: 340px;
+  --sol-exp-toast-max-height: 200px;
+  --sol-exp-z-toast: 99999;
+  --sol-exp-menu-edge: var(--sol-exp-space-8);
+  --sol-exp-branch-max-width: 30vw;
+  --sol-exp-vv-height: 100%;
+  --sol-exp-keyboard-inset: 0px;
+}
+
+@media (pointer: coarse) {
+  :root {
+    --sol-exp-row-height: var(--sol-exp-row-height-touch);
+    --sol-exp-control-size: var(--sol-exp-control-size-touch);
+    --sol-exp-scm-action-size: var(--sol-exp-touch-target);
+    --sol-exp-terminal-close-size: var(--sol-exp-touch-target);
+  }
+}
+
+.sol-exp-panel { height:100%; display:flex; flex-direction:column; background:var(--sol-exp-chrome-bg); color:var(--sol-exp-label-primary); font-size:13px; line-height:20px; user-select:none; overflow:hidden; }
 
 /* Phone-only information header (see layout/MobileHeader.ts). Hidden on every
-   non-sheet layout; the full tokenized styling lands with the sheet styles. */
+   non-sheet layout; displayed only while the column carries data-sol-exp-sheet. */
 .sol-exp-mobilehead { display:none; }
 
-.sol-exp-header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:4px; height:34px; padding:0 8px 0 6px; box-sizing:border-box; border-radius:12px; color:var(--dsw-alias-label-tertiary); }
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-panel {
+  box-sizing:border-box;
+  padding-bottom:var(--sol-exp-safe-bottom);
+}
 
-.sol-exp-title { font-size:13px; font-weight:500; color:var(--dsw-alias-label-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-mobilehead {
+  flex:none;
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  padding:var(--sol-exp-safe-top) var(--sol-exp-safe-right) 0 var(--sol-exp-safe-left);
+  background:var(--sol-exp-chrome-bg);
+  border-bottom:var(--sol-exp-border);
+}
 
-.sol-exp-header-actions { display:flex; gap:2px; }
+.sol-exp-mobilehead-row {
+  display:flex;
+  align-items:center;
+  gap:var(--sol-exp-space-8);
+  height:var(--sol-exp-info-row-height);
+  padding:0 var(--sol-exp-space-6) 0 var(--sol-exp-space-16);
+  box-sizing:border-box;
+  min-width:0;
+}
 
-.sol-exp-toolbar-btn { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; border-radius:6px; padding:0; }
+.sol-exp-mobilehead-workspace {
+  display:inline-flex;
+  align-items:center;
+  gap:var(--sol-exp-space-6);
+  min-width:0;
+  flex:0 1 auto;
+  color:var(--sol-exp-label-primary);
+  font:var(--sol-exp-title-font);
+}
+
+.sol-exp-mobilehead-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+
+.sol-exp-mobilehead-branch {
+  display:inline-flex;
+  align-items:center;
+  gap:var(--sol-exp-space-4);
+  min-width:0;
+  flex:0 1 auto;
+  color:var(--sol-exp-label-secondary);
+  font:var(--sol-exp-meta-font);
+}
+
+.sol-exp-mobilehead-branch-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:var(--sol-exp-branch-max-width); }
+
+.sol-exp-mobilehead-sync { flex:none; color:var(--sol-exp-label-tertiary); font-variant-numeric:tabular-nums; }
+
+.sol-exp-mobilehead-nogit,
+.sol-exp-mobilehead-changes { flex:none; color:var(--sol-exp-label-tertiary); font:var(--sol-exp-meta-font); white-space:nowrap; }
+
+.sol-exp-mobilehead-changes-unit { margin-left:var(--sol-exp-space-2); }
+
+.sol-exp-mobilehead-busy { flex:none; color:var(--sol-exp-label-tertiary); font:var(--sol-exp-meta-font); }
+
+.sol-exp-mobilehead-close {
+  flex:none;
+  width:var(--sol-exp-touch-target);
+  height:var(--sol-exp-touch-target);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:none;
+  border-radius:var(--sol-exp-radius);
+  background:transparent;
+  color:var(--sol-exp-label-secondary);
+  cursor:pointer;
+  touch-action:manipulation;
+}
+
+.sol-exp-mobilehead-close:hover { background:var(--sol-exp-hover-bg); color:var(--sol-exp-label-primary); }
+
+.sol-exp-mobilehead-close:focus-visible { outline:var(--sol-exp-focus-width) solid var(--sol-exp-focus-color); outline-offset:var(--sol-exp-focus-offset); }
+
+.sol-exp-header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:var(--sol-exp-space-4); height:var(--sol-exp-row-height); padding:0 var(--sol-exp-space-6) 0 var(--sol-exp-space-16); box-sizing:border-box; border-radius:0; border-bottom:var(--sol-exp-border); color:var(--sol-exp-label-secondary); }
+
+.sol-exp-title { font:var(--sol-exp-title-font); color:var(--sol-exp-label-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+
+.sol-exp-header-actions { display:flex; gap:var(--sol-exp-space-2); }
+
+.sol-exp-toolbar-btn { display:inline-flex; align-items:center; justify-content:center; width:var(--sol-exp-control-size); height:var(--sol-exp-control-size); border:none; background:transparent; color:var(--sol-exp-label-secondary); cursor:pointer; border-radius:var(--sol-exp-radius); padding:0; touch-action:manipulation; }
 
 .sol-exp-toolbar-btn:hover { background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-primary); }
 
-.sol-exp-search { display:flex; align-items:center; gap:4px; padding:0 8px 6px; flex-shrink:0; }
+.sol-exp-search { display:flex; align-items:center; gap:var(--sol-exp-space-4); padding:0 var(--sol-exp-space-8) var(--sol-exp-space-6); flex-shrink:0; }
 
 .sol-exp-search-icon { flex:none; color:var(--dsw-alias-label-tertiary); }
 
-.sol-exp-search-input { flex:1; width:0; min-width:0; box-sizing:border-box; padding:2px 8px; border:none; border-radius:6px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-primary); font-size:13px; line-height:20px; outline:none; }
+.sol-exp-search-input { flex:1; width:0; min-width:0; box-sizing:border-box; padding:var(--sol-exp-space-2) var(--sol-exp-space-8); border:none; border-radius:var(--sol-exp-radius); background:var(--dsw-alias-interactive-bg-hover); color:var(--sol-exp-label-primary); font-size:13px; line-height:20px; outline:none; }
 
 .sol-exp-search-input:focus { background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-interactive-bg-hover)); }
 
@@ -37,12 +182,8 @@ export const STYLES = `
 /* Touch devices: kill the double-tap-zoom delay on tree rows so the tap /
    double-tap semantics feel instant. */
 .sol-exp-tree-node { touch-action: manipulation; }
-/* Coarse pointers get 44px touch targets — desktop density is untouched. */
-@media (pointer: coarse) {
-  .sol-exp-tree-node { min-height:44px; padding-top:9px; padding-bottom:9px; }
-  .sol-exp-toolbar-btn { min-width:36px; min-height:36px; }
-  .sol-exp-context-menu-item { min-height:44px; }
-}
+/* Coarse-pointer density is tokenized in the single block at the end of this
+   stylesheet, so nothing here can be overridden by later base rules. */
 
 .sol-exp-tree-node:hover { background:var(--dsw-alias-interactive-bg-hover); }
 
@@ -164,9 +305,9 @@ export const STYLES = `
 
 .sol-exp-body { flex:1; min-height:0; display:flex; }
 
-.sol-exp-activity { flex:none; display:flex; flex-direction:row; align-items:stretch; padding:0 4px; gap:2px; border-bottom:1px solid var(--dsw-alias-border-l1); background:var(--dsw-specific-sidebar-fill); height:36px; }
+.sol-exp-activity { flex:none; display:flex; flex-direction:row; align-items:stretch; padding:0 var(--sol-exp-space-6); gap:var(--sol-exp-space-2); border-bottom:var(--sol-exp-border); background:var(--sol-exp-chrome-bg); height:var(--sol-exp-row-height); }
 
-.sol-exp-activity-btn { position:relative; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:var(--dsw-alias-label-tertiary); cursor:pointer; border-radius:6px; padding:0; margin:auto 0; }
+.sol-exp-activity-btn { position:relative; flex:none; width:var(--sol-exp-control-size); height:var(--sol-exp-control-size); display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:var(--sol-exp-label-tertiary); cursor:pointer; border-radius:var(--sol-exp-radius); padding:0; margin:auto 0; touch-action:manipulation; }
 
 .sol-exp-activity-btn:hover { color:var(--dsw-alias-label-primary); background:var(--dsw-alias-interactive-bg-hover); }
 
@@ -483,4 +624,140 @@ export const STYLES = `
    native column on the main window, so force it back. Clicks are taken over
    by the native-rightbar bridge (store realign + exclusivity). */
 html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-right-expand] { display: flex !important; }
+
+/* ── Portrait phone fullscreen sheet ──────────────────────────────────────
+   The column carries data-sol-exp-sheet while open. These rules only resize
+   and hide chrome; the sheet's geometry itself stays in layout/grid.ts. */
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-content,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-scm-top,
+[data-solution-explorer][data-sol-exp-sheet] #sol-exp-commits-list,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-commit-files,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-mdview,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-pdfview,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-docview {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-activity {
+  height: var(--sol-exp-row-height);
+  padding: 0 var(--sol-exp-space-4);
+}
+
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-activity-btn {
+  width: var(--sol-exp-control-size);
+  height: var(--sol-exp-control-size);
+}
+
+/* The information header owns the close affordance on a phone. */
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-panel-toggle { display: none; }
+
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-header {
+  height: var(--sol-exp-row-height);
+  justify-content: flex-end;
+}
+
+/* The workspace name already lives in the information header. */
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-header .sol-exp-title { display: none; }
+
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-toolbar-btn {
+  width: var(--sol-exp-control-size);
+  height: var(--sol-exp-control-size);
+  min-width: var(--sol-exp-control-size);
+  min-height: var(--sol-exp-control-size);
+}
+
+/* Search row has no actions; let the input sit directly under the title bar. */
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-search-panel > .sol-exp-header { display: none; }
+
+/* ── Toast ────────────────────────────────────────────────────────────────
+   Extracted from shared/ui.ts inline styles so its position can use the same
+   safe-area token as the sheet. */
+.sol-exp-toast {
+  position: fixed;
+  right: var(--sol-exp-space-16);
+  bottom: calc(var(--sol-exp-toast-offset) + var(--sol-exp-safe-bottom));
+  z-index: var(--sol-exp-z-toast);
+  max-width: var(--sol-exp-toast-max-width);
+  max-height: var(--sol-exp-toast-max-height);
+  overflow: auto;
+  padding: var(--sol-exp-space-8) var(--sol-exp-space-12);
+  border-radius: var(--sol-exp-radius);
+  border: var(--sol-exp-hairline) solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-3));
+  color: var(--sol-exp-label-primary);
+  font: var(--sol-exp-meta-font);
+  box-shadow: var(--dsw-elevation-prominent);
+  white-space: pre-wrap;
+  word-break: break-all;
+  transition: opacity var(--sol-exp-duration) var(--sol-exp-ease);
+}
+
+.sol-exp-toast.error { color: var(--dsw-alias-state-error-primary); }
+
+/* ── Coarse-pointer density ──────────────────────────────────────────────
+   The single source of touch sizing. Kept last so later base rules cannot
+   override it; dimensions come from the token layer only. */
+@media (pointer: coarse) {
+  .sol-exp-tree-node {
+    min-height: var(--sol-exp-touch-target);
+    padding-top: var(--sol-exp-tree-row-padding-block);
+    padding-bottom: var(--sol-exp-tree-row-padding-block);
+  }
+
+  .sol-exp-context-menu-item { min-height: var(--sol-exp-touch-target); }
+
+  .sol-exp-search { padding: 0 var(--sol-exp-space-8) var(--sol-exp-space-6); }
+
+  .sol-exp-search-input {
+    min-height: var(--sol-exp-input-min-height);
+    padding: 0 var(--sol-exp-space-12);
+    font-size: var(--sol-exp-input-font-size);
+    line-height: var(--sol-exp-input-line-height);
+  }
+
+  .sol-exp-scm-item,
+  .sol-exp-repo-item,
+  .sol-exp-search-item { min-height: var(--sol-exp-touch-target); }
+
+  .sol-exp-scm-section-header { min-height: var(--sol-exp-touch-target); }
+
+  .sol-exp-hdr-btn,
+  .sol-exp-scm-action-btn {
+    width: var(--sol-exp-scm-action-size);
+    height: var(--sol-exp-scm-action-size);
+  }
+
+  /* Touch has no hover: per-file stage/discard must be visible. */
+  .sol-exp-scm-actions { display: flex; }
+
+  .sol-exp-commit-btn,
+  .sol-exp-ai-btn { min-height: var(--sol-exp-touch-target); }
+
+  .sol-exp-ai-btn {
+    width: var(--sol-exp-touch-target);
+    line-height: var(--sol-exp-touch-target);
+  }
+
+  .sol-exp-term-tabs { height: var(--sol-exp-terminal-tab-height); }
+  .sol-exp-term-tab { height: var(--sol-exp-terminal-tab-height); }
+
+  .sol-exp-term-tab-close {
+    width: var(--sol-exp-terminal-close-size);
+    height: var(--sol-exp-terminal-close-size);
+  }
+
+  .sol-exp-term-resize {
+    height: var(--sol-exp-terminal-resize-hit);
+    top: calc(var(--sol-exp-terminal-resize-hit) / -2);
+  }
+
+  .sol-exp-modal-btn { min-height: var(--sol-exp-touch-target); }
+
+  .sol-exp-modal-mask {
+    padding: calc(var(--sol-exp-safe-top) + var(--sol-exp-space-16)) var(--sol-exp-space-16)
+             calc(var(--sol-exp-safe-bottom) + var(--sol-exp-space-16));
+    box-sizing: border-box;
+  }
+}
 `

@@ -90,6 +90,14 @@ export function findFrame(): any {
 
 export function applyGrid({ state }: { state: AppState }): void {
 
+					// The sheet marker is independent of the grid tracks: set it
+					// before the early return so the info header appears even while
+					// the shell's track list is still settling.
+					if (state.layout.panelCol !== null) {
+						if (isPortraitPhone() && !state.layout.panelCollapsed) state.layout.panelCol.dataset.solExpSheet = "1";
+						else delete state.layout.panelCol.dataset.solExpSheet;
+					}
+
 					if (state.layout.panelFrame === null || state.layout.shellTracks.length < 3) return;
 
 					// Portrait phone: the panel is a fullscreen sheet. Closed it

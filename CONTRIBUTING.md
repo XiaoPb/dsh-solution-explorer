@@ -63,7 +63,9 @@ src/client/
 - **Icons come from the official package**
   (`@deepseek-ai/dsh-client-ui-primitives`: `FileTypeIcon`, `IconXxx16`); no
   hand-written SVG strings.
-- **Styles use `--dsw-alias-*` tokens** (never literal colors), and product copy
+- **Styles use upstream `--dsw-*` tokens for colors/fonts/radii** (never literal
+  colors), and the `--sol-exp-*` semantic tokens for geometry (no bare px in
+  rules); product copy
   goes through `t("key")` with both Chinese and English in `locales.ts`.
 - **Host routes answer `{ ok: true, value }` or `{ ok: false, error: { message } }`.**
   Git runs through `execFileSync('git', args, { cwd })` (never a shell string),

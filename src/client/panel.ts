@@ -392,9 +392,10 @@ export function mountPanel(ctx: ClientContext): void {
 					}
 
 					// Nothing to fold while the panel is closed (auto-open off
-					// or no session root): the control is only reachable from
-					// the expanded column, but guard anyway.
-					if (state.layout.panelWidth <= 0) return;
+					// or no session root). A portrait sheet can be unfolded by
+					// gesture/entry while panelWidth is still 0, so the phone
+					// must always be allowed to close it.
+					if (!isPortraitPhone() && state.layout.panelWidth <= 0) return;
 
 					state.layout.panelCollapsed = true;
 
