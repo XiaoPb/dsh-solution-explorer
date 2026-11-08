@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { FileTypeIcon, IconFolderClose, IconSearchOutline } from '../icons.ts'
 import { t } from '../locales.ts'
 import type { SearchState, TreeState } from '../state/store.ts'
+import { useDraft } from '../shared/draft.ts'
 
 /** One search hit as the /search route returns it. */
 export interface SearchHit {
@@ -35,6 +36,9 @@ export interface SearchPanelProps {
 
 /** The explorer search panel: header, query row, and results. */
 export function SearchPanel({ search, tree, root, actions }: SearchPanelProps): ReactNode {
+  // Local draft: the store update alone does not re-render this component, so a
+  // controlled value bound straight to it would erase every keystroke.
+  const [queryDraft, setQueryDraft] = useDraft(search.searchQuery, actions.search)
   const title = root ? (root.split(/[\\/]/).pop() || root) : ''
   const results = (search.searchResults ?? []) as SearchHit[]
 
@@ -71,9 +75,9 @@ export function SearchPanel({ search, tree, root, actions }: SearchPanelProps): 
         type: 'text',
         className: 'sol-exp-search-input',
         placeholder: t('file.search'),
-        value: search.searchQuery,
-        onChange: (e) => actions.search(e.target.value),
-        onKeyDown: (e) => { if (e.key === 'Escape') actions.search('') },
+        value: queryDraft,
+        onChange: (e) => setQueryDraft(e.target.value),
+        onKeyDown: (e) => { if (e.key === 'Escape') { setQueryDraft(''); actions.search('') } },
       }),
     ),
     h('div', { className: 'sol-exp-content' }, content),
