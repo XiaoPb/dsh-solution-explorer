@@ -364,7 +364,7 @@ body {
   --sol-exp-ease: var(--ds-ease-in-out, ease);
 
   /* 表面 / 文本 / 交互色：不新增颜色值 */
-  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base, Canvas));
   --sol-exp-label-primary: var(--dsw-alias-label-primary);
   --sol-exp-label-secondary: var(--dsw-alias-label-secondary);
   --sol-exp-label-tertiary: var(--dsw-alias-label-tertiary);
@@ -1204,7 +1204,7 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 1. **Sheet 标记位置**：计划写在 `isPortraitPhone()` 分支内；实际放在 `applyGrid()` 早退之前，因为 `shellTracks` 未就绪时该分支根本不会执行，信息头会缺席第一帧。
 2. **Toast**：计划只要求改 `bottom` 一行；实际把内联样式抽成 `.sol-exp-toast` class，位置/尺寸/层级全部走 token，避免新 token 只服务一行内联样式。
 3. **右键菜单安全区**：自定义属性值不会在 `getComputedStyle` 里解析成 px；改为读取 `.sol-exp-panel` 的实际 `padding-bottom`，否则 `parseFloat` 恒为 0。
-4. **Token 作用域修正（背景透明问题）**：首版把 token 层写在 `:root`，但上游主题的 `--dsw-*` 颜色 token 挂在 `body`；`--sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill)` 在 `:root` 解析不到，导致 `.sol-exp-panel` / 信息头背景透明、内容互相重叠。已改为在 `body` 定义 token，并给 chrome 背景加 `var(--dsw-alias-bg-base)` 兜底。
+4. **Token 作用域修正（背景透明问题）**：首版把 token 层写在 `:root`，但上游主题的 `--dsw-*` 颜色 token 挂在 `body`；`--sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill)` 在 `:root` 解析不到，导致 `.sol-exp-panel` / 信息头背景透明、内容互相重叠。已改为在 `body` 定义 token，并给 chrome 背景加 `var(--dsw-alias-bg-base, Canvas)` 兜底。
 5. **未做**：`visualViewport` 键盘避让、底部操作条（P2）、`scripts/check-style-tokens.mjs`；这三项保留为后续独立提交，避免把仍需要真机键盘验证的改动混进本次。
 
 ### 10.4 验证结果

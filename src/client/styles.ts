@@ -5,7 +5,10 @@ export const STYLES = `
 /* ── Semantic token layer ────────────────────────────────────────────────
    Upstream exposes colors, fonts, radii, focus rings and motion, but no
    spacing / size / control-height tokens. Geometry therefore lives here once;
-   every rule below consumes these tokens and never repeats the literals. */
+   every rule below consumes these tokens and never repeats the literals.
+   Scope is body, not :root: upstream theme variables are declared on body, so
+   a :root declaration would compute the color aliases where --dsw-* is not
+   defined and leave the panel/header background transparent. */
 body {
   --sol-exp-touch-target: 44px;
   --sol-exp-row-height: 38px;
@@ -31,7 +34,7 @@ body {
   --sol-exp-focus-offset: -2px;
   --sol-exp-duration: var(--ds-transition-duration, .2s);
   --sol-exp-ease: var(--ds-ease-in-out, ease);
-  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base, Canvas));
   --sol-exp-label-primary: var(--dsw-alias-label-primary);
   --sol-exp-label-secondary: var(--dsw-alias-label-secondary);
   --sol-exp-label-tertiary: var(--dsw-alias-label-tertiary);
