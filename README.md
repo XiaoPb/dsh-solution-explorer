@@ -106,11 +106,16 @@
 ### From dsh-market (GUI)
 
 Open the marketplace in the DSH Web UI, search for "solution-explorer", and
-click install.
+click install. The marketplace entry is the upstream package; this fork
+publishes under its own scope, so use npm below to get the fork's build.
 
 ### From npm
 
 ```sh
+# this fork (published from xiaopb/main)
+dsh plugin --profile web add @xiaopb/dsh-solution-explorer@1.1.0
+
+# upstream
 dsh plugin --profile web add dsh-solution-explorer
 ```
 

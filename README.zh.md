@@ -49,11 +49,16 @@
 
 ### 从 dsh-market 安装（GUI）
 
-在 DSH Web UI 中打开插件市场，搜索"solution-explorer"，点击安装。
+在 DSH Web UI 中打开插件市场，搜索"solution-explorer"，点击安装。市场里收录的是上游包；
+本 fork 自带作用域，想装 fork 版本请用下面的 npm 命令。
 
 ### 从 npm 安装
 
 ```sh
+# 本 fork（从 xiaopb/main 发布）
+dsh plugin --profile web add @xiaopb/dsh-solution-explorer@1.1.0
+
+# 上游包
 dsh plugin --profile web add dsh-solution-explorer
 ```
 
