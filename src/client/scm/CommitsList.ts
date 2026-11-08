@@ -92,7 +92,7 @@ function CommitDetailInline({ detail, hash, actions }: {
 export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
   const listStyle = {
     marginTop: '6px', fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)',
-    flex: 1, minHeight: 0, overflowY: 'auto',
+    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
   } as const
   const onScroll = (e: unknown): void => actions.commitsScroll(e)
 
@@ -114,10 +114,10 @@ export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
           'data-hash': c.hash,
           onClick: () => actions.commitDetail(c.hash),
         },
-          h('span', { className: 'sol-exp-graph' }, h(GraphSvg, { draw: plans[i] })),
-          h('span', { className: 'sol-exp-commit-hash' }, c.shortHash),
-          h('span', { className: 'sol-exp-commit-msg' }, c.message.substring(0, 60) + (c.message.length > 60 ? '...' : '')),
-          h('span', { className: 'sol-exp-commit-date' }, relTime(c.timestamp)),
+          h('span', { className: 'sol-exp-graph', style: { display: 'flex', flexShrink: 0 } }, h(GraphSvg, { draw: plans[i] })),
+          h('span', { className: 'sol-exp-commit-hash', style: { flexShrink: 0 } }, c.shortHash),
+          h('span', { className: 'sol-exp-commit-msg', style: { minWidth: 0 } }, c.message.substring(0, 60) + (c.message.length > 60 ? '...' : '')),
+          h('span', { className: 'sol-exp-commit-date', style: { flexShrink: 0 } }, relTime(c.timestamp)),
         ),
         selected ? h(CommitDetailInline, { detail, hash: c.hash, actions }) : null,
       )
