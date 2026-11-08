@@ -18,6 +18,11 @@ const zh = {
   'panel.collapse': '收起面板',
   'panel.editor': '编辑器',
   'panel.terminal': '终端',
+  'header.noGit': '无 Git',
+  'header.changes': '项更改',
+  'header.workspace': '工作区',
+  'header.branch': '分支',
+  'header.close': '关闭面板',
 
   // File explorer
   'file.search': '搜索文件...',
@@ -244,6 +249,11 @@ const en: Record<SolutionExplorerKey, string> = {
   'panel.collapse': 'Collapse panel',
   'panel.editor': 'Editor',
   'panel.terminal': 'Terminal',
+  'header.noGit': 'No Git',
+  'header.changes': 'changes',
+  'header.workspace': 'Workspace',
+  'header.branch': 'Branch',
+  'header.close': 'Close panel',
 
   'file.search': 'Search files...',
   'file.open': 'Open file',

@@ -3,6 +3,10 @@
 export const STYLES = `
 .sol-exp-panel { height:100%; display:flex; flex-direction:column; background:var(--dsw-specific-sidebar-fill); color:var(--dsw-alias-label-primary); font-size:13px; line-height:20px; user-select:none; overflow:hidden; }
 
+/* Phone-only information header (see layout/MobileHeader.ts). Hidden on every
+   non-sheet layout; the full tokenized styling lands with the sheet styles. */
+.sol-exp-mobilehead { display:none; }
+
 .sol-exp-header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:4px; height:34px; padding:0 8px 0 6px; box-sizing:border-box; border-radius:12px; color:var(--dsw-alias-label-tertiary); }
 
 .sol-exp-title { font-size:13px; font-weight:500; color:var(--dsw-alias-label-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }

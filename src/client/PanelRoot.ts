@@ -26,6 +26,7 @@ import type { SearchActions } from './explorer/SearchPanel.ts'
 import { ScmPanel } from './scm/ScmPanel.ts'
 import type { ScmActions } from './scm/ScmPanel.ts'
 import { ContextMenu } from './explorer/ContextMenu.ts'
+import { MobileHeader } from './layout/MobileHeader.ts'
 import type { AppState } from './state/store.ts'
 
 /** Panel-level actions (activity bar, rail and panel toggles). */
@@ -119,6 +120,7 @@ export function PanelRoot({ state, actions }: PanelRootProps): ReactNode {
       className: 'sol-exp-panel',
       onDragOver: (e) => e.preventDefault(),
     },
+      h(MobileHeader, { state, actions }),
       h(ActivityBar, { state, actions }),
       h('div', { className: 'sol-exp-body' },
         h('div', { className: 'sol-exp-main' }, content)),
