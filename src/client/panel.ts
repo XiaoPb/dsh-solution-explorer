@@ -35,7 +35,7 @@ import { loadRemotes, loadBranches, loadTags } from "./scm/branches.ts"
 
 import { registerScmCommands } from "./scm/commands.ts"
 
-import { applyGrid, registerGridCommands } from "./layout/grid.ts"
+import { applyGrid } from "./layout/grid.ts"
 
 import { isPortraitPhone } from "./touch/form-factor.ts"
 
@@ -169,7 +169,6 @@ export function mountPanel(ctx: ClientContext): void {
 						openDiff: (p, s) => { void commands.openDiff?.(p, s) },
 						openFile: (p) => { void commands.openFile?.(p) },
 						selectFile: (p, d) => { void commands.selectFile?.(p, d) },
-						dividerDown: (e) => { commands.scmDividerDown?.(e as PointerEvent) },
 						commitsScroll: (e) => { commands.commitsScroll?.(e as Event) },
 						commitDetail: (hash) => { void commands.commitDetail?.(hash) },
 						commitCheckout: (hash) => { void commands.commitCheckout?.(hash) },
@@ -188,12 +187,6 @@ export function mountPanel(ctx: ClientContext): void {
 				}
 
 				function render() {
-
-					// During a divider drag the SCM DOM must stay untouched: any
-					// rebuild here would reset flex-basis from the dragged pixel
-					// value back to the percentage default and make the divider
-					// jump (visible on the first drag after startup).
-					if (state.scm.scmDragging) return;
 
 					if (!state.activeEl) return;
 
@@ -667,7 +660,7 @@ export function mountPanel(ctx: ClientContext): void {
 				// is on screen, patched locally every few seconds.
 				const autoRefreshTimer = setInterval(() => {
 
-					if (state.root === "" || document.visibilityState !== "visible" || state.scm.scmDragging) return;
+					if (state.root === "" || document.visibilityState !== "visible") return;
 
 					if (state.currentTab === "scm") loadGitStatus(actionsDeps);
 
@@ -683,7 +676,6 @@ export function mountPanel(ctx: ClientContext): void {
 					registerClipboardCommands({ state, render, loadGitStatus }),
 					registerContextMenuCommands({ state, render, loadGitStatus }),
 					registerScmCommands(ScmCommandsDeps),
-					registerGridCommands(gridDeps),
 					registerEditorCommands(EditorCommandsDeps),
 				];
 

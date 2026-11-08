@@ -22,7 +22,6 @@ const NODE_R = 3
 export interface CommitsActions {
   commitDetail(hash: string): void
   commitCheckout(hash: string): void
-  commitsScroll(e: unknown): void
 }
 
 /** Props of the commits list. */
@@ -90,21 +89,22 @@ function CommitDetailInline({ detail, hash, actions }: {
 
 /** The commits list body (loading / empty / rows with graph). */
 export function CommitsList({ commits, actions }: CommitsListProps): ReactNode {
+  // The SCM view (not this list) is the scroll container: the graph expands
+  // inside the single column and its pagination is driven by the view's
+  // onScroll handler, exactly like VS Code's Source Control view.
   const listStyle = {
-    marginTop: '6px', fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)',
-    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
+    marginTop: '2px', fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)',
   } as const
-  const onScroll = (e: unknown): void => actions.commitsScroll(e)
 
   if (commits.rows === null) {
-    return h('div', { id: 'sol-exp-commits-list', style: listStyle, onScroll }, t('loading'))
+    return h('div', { id: 'sol-exp-commits-list', style: listStyle }, t('loading'))
   }
   if (commits.rows.length === 0) {
-    return h('div', { id: 'sol-exp-commits-list', style: listStyle, onScroll }, t('scm.log.empty'))
+    return h('div', { id: 'sol-exp-commits-list', style: listStyle }, t('scm.log.empty'))
   }
 
   const plans = planGraph(commits.rows)
-  return h('div', { id: 'sol-exp-commits-list', style: listStyle, onScroll },
+  return h('div', { id: 'sol-exp-commits-list', style: listStyle },
     commits.rows.map((c, i) => {
       const selected = commits.graphDetailOpen === c.hash
       const detail = selected ? commits.commitDetailCache.get(c.hash) : undefined

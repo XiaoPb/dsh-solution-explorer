@@ -209,11 +209,17 @@ body {
 
 .sol-exp-scm-section { }
 
-.sol-exp-scm-section-header { display:flex; align-items:center; gap:4px; padding:8px 12px; cursor:pointer; font-size:12px; font-weight:600; color:var(--dsw-alias-label-secondary); }
+.sol-exp-scm-section-header { display:flex; align-items:center; gap:4px; padding:8px 12px; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--dsw-alias-label-secondary); }
 
 .sol-exp-scm-section-header:hover { color:var(--dsw-alias-label-primary); }
 
 .sol-exp-scm-section-count { font-size:11px; font-weight:400; color:var(--dsw-alias-label-tertiary); }
+
+.sol-exp-scm-subsection.collapsed > *:not(.sol-exp-scm-subsection-header) { display:none !important; }
+
+.sol-exp-scm-subsection-header { display:flex; align-items:center; gap:4px; padding:6px 12px 2px 22px; cursor:pointer; font-size:11px; font-weight:600; color:var(--dsw-alias-label-secondary); }
+
+.sol-exp-scm-subsection-header:hover { color:var(--dsw-alias-label-primary); }
 
 .sol-exp-scm-item { display:flex; align-items:center; gap:6px; min-width:0; padding:5px 10px 5px 24px; box-sizing:border-box; cursor:pointer; font-size:13px; line-height:20px; border-radius:10px; }
 
@@ -255,11 +261,11 @@ body {
 
 .sol-exp-hdr-btn.danger:hover { background:var(--dsw-alias-state-error-primary); color:#fff; }
 
-.sol-exp-commit-box { padding:8px 12px; border-bottom:1px solid var(--dsw-alias-border-l1); }
+.sol-exp-commit-box { padding:8px 12px 4px; }
 
-.sol-exp-commit-input { width:100%; box-sizing:border-box; padding:6px 10px; border:none; border-radius:8px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-primary); font-size:13px; line-height:18px; outline:none; resize:none; font-family:inherit; min-height:60px; transition:background-color 120ms ease; }
+.sol-exp-commit-input { width:100%; box-sizing:border-box; padding:6px 10px; border:1px solid var(--dsw-alias-border-l2); border-radius:6px; background:var(--dsw-alias-bg-input); color:var(--dsw-alias-label-primary); font-size:13px; line-height:18px; outline:none; resize:none; font-family:inherit; min-height:60px; transition:border-color 120ms ease, background-color 120ms ease; }
 
-.sol-exp-commit-input:focus { background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-interactive-bg-hover)); }
+.sol-exp-commit-input:focus { border-color:var(--dsw-alias-brand-primary); background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-bg-input)); }
 
 .sol-exp-commit-input::placeholder { color:var(--dsw-alias-label-tertiary); }
 
@@ -299,13 +305,13 @@ body {
 
 .sol-exp-path::before { content:'\\2014 '; }
 
-.sol-exp-content, .sol-exp-scm-top, #sol-exp-commits-list, .sol-exp-commit-files { scrollbar-width:thin; }
+.sol-exp-content, .sol-exp-scm-sections, .sol-exp-commit-files { scrollbar-width:thin; }
 
-.sol-exp-content::-webkit-scrollbar, .sol-exp-scm-top::-webkit-scrollbar, #sol-exp-commits-list::-webkit-scrollbar, .sol-exp-commit-files::-webkit-scrollbar { width:6px; height:6px; }
+.sol-exp-content::-webkit-scrollbar, .sol-exp-scm-sections::-webkit-scrollbar, .sol-exp-commit-files::-webkit-scrollbar { width:6px; height:6px; }
 
-.sol-exp-content::-webkit-scrollbar-track, .sol-exp-scm-top::-webkit-scrollbar-track, #sol-exp-commits-list::-webkit-scrollbar-track, .sol-exp-commit-files::-webkit-scrollbar-track { background:transparent; }
+.sol-exp-content::-webkit-scrollbar-track, .sol-exp-scm-sections::-webkit-scrollbar-track, .sol-exp-commit-files::-webkit-scrollbar-track { background:transparent; }
 
-.sol-exp-content::-webkit-scrollbar-thumb, .sol-exp-scm-top::-webkit-scrollbar-thumb, #sol-exp-commits-list::-webkit-scrollbar-thumb, .sol-exp-commit-files::-webkit-scrollbar-thumb { background:var(--dsw-alias-scrollbar-bg-l2); border-radius:3px; }
+.sol-exp-content::-webkit-scrollbar-thumb, .sol-exp-scm-sections::-webkit-scrollbar-thumb, .sol-exp-commit-files::-webkit-scrollbar-thumb { background:var(--dsw-alias-scrollbar-bg-l2); border-radius:3px; }
 
 .sol-exp-body { flex:1; min-height:0; display:flex; }
 
@@ -574,13 +580,24 @@ body {
 .sol-exp-commit-tip-link:hover { text-decoration:underline; }
 .sol-exp-scm-status { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:4px; font-size:11px; font-weight:700; background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-scm-host { flex:1; min-height:0; display:flex; flex-direction:column; }
-.sol-exp-scm-split { flex:1; min-height:0; height:100%; display:flex; flex-direction:column; }
-.sol-exp-scm-top { flex:1 1 55%; min-height:0; overflow-y:auto; }
-.sol-exp-scm-divider { position:relative; flex:none; height:4px; cursor:row-resize; background:var(--dsw-alias-border-l1); z-index:3; }
-.sol-exp-scm-divider::before { content:''; position:absolute; left:0; right:0; top:-6px; bottom:-6px; }
-.sol-exp-scm-divider:hover { background:var(--dsw-alias-interactive-bg-hover); }
-.sol-exp-scm-bottom { flex:1 1 45%; min-height:0; display:flex; flex-direction:column; }
-.sol-exp-scm-section[data-section="commits"] { flex:1; min-height:0; display:flex; flex-direction:column; }
+.sol-exp-scm-sections { display:flex; flex-direction:column; }
+.sol-exp-scm-sections > .sol-exp-scm-section + .sol-exp-scm-section { border-top:1px solid var(--dsw-alias-border-l1); }
+.sol-exp-scm-repository-body { padding:2px 12px 8px; display:flex; flex-direction:column; }
+.sol-exp-scm-branch-line { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--dsw-alias-label-tertiary); padding:4px 0 2px; }
+.sol-exp-scm-commits-body { padding:2px 8px 8px 12px; }
+.sol-exp-scm-empty { padding:4px 12px 8px 22px; font-size:12px; color:var(--dsw-alias-label-tertiary); }
+.sol-exp-scm-inline-panel { margin:6px 0 2px; padding:8px; border:1px solid var(--dsw-alias-border-l2); border-radius:8px; background:var(--dsw-alias-bg-layer-3); font-size:12px; }
+.sol-exp-scm-inline-head { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.sol-exp-scm-inline-hint { color:var(--dsw-alias-label-tertiary); padding:2px 0 6px; }
+.sol-exp-scm-inline-row { display:flex; align-items:center; gap:6px; padding:2px 0; min-width:0; }
+.sol-exp-scm-inline-name { flex:none; font-weight:600; }
+.sol-exp-scm-inline-url { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-secondary); }
+.sol-exp-scm-inline-add { display:flex; gap:6px; margin-top:8px; }
+.sol-exp-scm-inline-input { min-height:0; height:28px; flex:1; padding:0 8px; }
+.sol-exp-scm-branch-row { cursor:pointer; }
+.sol-exp-scm-branch-current { flex:none; width:14px; }
+.sol-exp-scm-branch-hash { flex:none; font-size:10px; color:var(--dsw-alias-label-tertiary); }
+.sol-exp-scm-mini-btn { padding:1px 5px; }
 .sol-exp-repo-item { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; padding:5px 10px; box-sizing:border-box; border-radius:10px; cursor:pointer; font-size:12px; }
 .sol-exp-repo-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .sol-exp-repo-item.active { background:var(--dsw-alias-interactive-bg-active); }
@@ -635,7 +652,7 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
    The column carries data-sol-exp-sheet while open. These rules only resize
    and hide chrome; the sheet's geometry itself stays in layout/grid.ts. */
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-content,
-[data-solution-explorer][data-sol-exp-sheet] .sol-exp-scm-top,
+[data-solution-explorer][data-sol-exp-sheet] .sol-exp-scm-sections,
 [data-solution-explorer][data-sol-exp-sheet] #sol-exp-commits-list,
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-commit-files,
 [data-solution-explorer][data-sol-exp-sheet] .sol-exp-mdview,

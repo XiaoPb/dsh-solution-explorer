@@ -142,6 +142,7 @@ const zh = {
   'scm.repository': '存储库',
   'scm.repository.branch': '分支',
   'scm.repository.commits': '最近提交',
+  'scm.graph': '图表',
   'scm.repo.repository': '仓库',
   'scm.repo.worktree': '工作树',
 
@@ -374,6 +375,7 @@ const en: Record<SolutionExplorerKey, string> = {
   'scm.repository': 'Repository',
   'scm.repository.branch': 'Branch',
   'scm.repository.commits': 'Recent Commits',
+  'scm.graph': 'Graph',
   'scm.repo.repository': 'Repository',
   'scm.repo.worktree': 'Worktree',
 

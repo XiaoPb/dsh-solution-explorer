@@ -60,9 +60,6 @@ export interface ScmState {
   aiGenerating: boolean
   /** SCM panel section fold state (conflicts/changes/staged/repository/commits). */
   collapsedSections: Set<string>
-  /** SCM top/bottom split percentage. */
-  scmSplit: number
-  scmDragging: boolean
   remotePanelOpen: boolean
   branchPanelOpen: boolean
   remotesList: any[]
@@ -229,8 +226,6 @@ export function createInitialState(): AppState {
       committing: false,
       aiGenerating: false,
       collapsedSections: new Set<string>(),
-      scmSplit: 55,
-      scmDragging: false,
       remotePanelOpen: false,
       branchPanelOpen: false,
       remotesList: [],

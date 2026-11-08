@@ -1,14 +1,15 @@
 /**
  * React SCM panel — the source-control tab of the unified React client render.
  *
- * Sections, item rows, the commit box, the repository block and the remote /
- * branch panels are React elements; events call `actions`;
- * glyphs come from the official @deepseek-ai/dsh-client-ui-primitives set (the
+ * Layout follows VS Code's Source Control view: one vertical, scrollable stack
+ * of three sections — Repository (branch, sync actions, worktree switcher),
+ * Changes (commit box, conflicts, staged and working-tree changes) and Graph
+ * (the commit graph). There is no top/bottom split or draggable divider; the
+ * whole view scrolls and the commit graph expands inside it.
+ *
+ * Glyphs come from the official @deepseek-ai/dsh-client-ui-primitives set (the
  * four git sync operations keep plain text glyphs — the official set has no
  * distinct fetch/pull/push/sync icons).
- *
- * The commits list is still produced by the graph builder as an HTML island and
- * migrates in the commits-graph block.
  * @module dsh-solution-explorer/client/scm/ScmPanel
  */
 import { createElement as h, Fragment } from 'react'
@@ -71,7 +72,6 @@ export interface ScmActions {
   openDiff(path: string, staged: boolean): void
   openFile(path: string): void
   selectFile(path: string, isDir: boolean): void
-  dividerDown(e: unknown): void
   commitsScroll(e: unknown): void
   commitDetail(hash: string): void
   commitCheckout(hash: string): void
@@ -97,6 +97,27 @@ function Section(props: {
   return h('div', { className: 'sol-exp-scm-section' + (props.collapsed ? ' collapsed' : ''), 'data-section': props.id },
     h('div', { className: 'sol-exp-scm-section-header', onClick: props.onToggle },
       h(IconChevronRightOutline, { size: 14 }),
+      props.title,
+      h('span', { className: 'sol-exp-scm-header-actions' }, props.headerActions),
+      h('span', { className: 'sol-exp-scm-section-count' }, props.count),
+    ),
+    props.children,
+  )
+}
+
+/** A collapsible group nested inside a top-level section (VS Code groups). */
+function SubSection(props: {
+  id: string
+  title: string
+  count?: ReactNode
+  collapsed: boolean
+  onToggle: () => void
+  headerActions?: ReactNode
+  children?: ReactNode
+}): ReactNode {
+  return h('div', { className: 'sol-exp-scm-subsection' + (props.collapsed ? ' collapsed' : ''), 'data-subsection': props.id },
+    h('div', { className: 'sol-exp-scm-subsection-header', onClick: props.onToggle },
+      h(IconChevronRightOutline, { size: 12 }),
       props.title,
       h('span', { className: 'sol-exp-scm-header-actions' }, props.headerActions),
       h('span', { className: 'sol-exp-scm-section-count' }, props.count),
@@ -138,7 +159,7 @@ function ScmItem({ item, section, actions }: { item: ScmChange; section: string;
   )
 }
 
-/** The SCM panel: split view with the top (sections) and bottom (repository + commits). */
+/** The SCM panel: Repository → Changes → Graph, one scrollable column. */
 export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactNode {
   if (!root) {
     return h('div', { className: 'sol-exp-content' }, h('div', { className: 'sol-exp-empty' }, t('panel.empty')))
@@ -162,71 +183,15 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
   const conflicts = (status?.conflicts ?? []) as ScmChange[]
   const allChanges = [...unstaged, ...untracked]
   const collapsed = (id: string) => scm.collapsedSections.has(id)
+  const syncCount = (status?.ahead || 0) > 0 || (status?.behind || 0) > 0
+    ? `↑${status?.ahead || 0} ↓${status?.behind || 0}`
+    : ''
 
   const syncBtn = (glyph: string, title: string, fn: () => void): ReactNode =>
     h('button', {
       className: 'sol-exp-hdr-btn', title,
       onClick: (e) => { e.stopPropagation(); fn() },
     }, glyph)
-
-  const top = h(Fragment, null,
-    conflicts.length > 0
-      ? h(Section, { id: 'conflicts', title: t('scm.merge.changes'), count: conflicts.length, collapsed: collapsed('conflicts'), onToggle: () => actions.toggleSection('conflicts') },
-          conflicts.map((item) => h(ScmItem, { key: item.path, item, section: 'conflicts', actions })))
-      : null,
-
-    h('div', { className: 'sol-exp-commit-box' },
-      h('textarea', {
-        className: 'sol-exp-commit-input',
-        placeholder: t('scm.commit.placeholder') + (status?.branch && status.branch !== 'unknown' ? ' (' + status.branch + ')' : ''),
-        value: scm.commitMessage,
-        onChange: (e) => actions.commitMsg(e.target.value),
-      }),
-      h('div', { className: 'sol-exp-commit-row' },
-        h('button', {
-          className: 'sol-exp-commit-btn',
-          disabled: scm.committing || !scm.commitMessage.trim(),
-          onClick: () => actions.commit(),
-        }, scm.committing ? t('scm.committing') : t('scm.commit.button')),
-        h('button', {
-          className: 'sol-exp-ai-btn', title: t('scm.ai.gen'),
-          disabled: scm.aiGenerating || !(staged.length > 0),
-          onClick: () => actions.genCommitMsg(),
-        }, '✦'),
-      ),
-    ),
-
-    h(Section, {
-      id: 'changes', title: t('scm.changes'), count: allChanges.length,
-      collapsed: collapsed('changes'), onToggle: () => actions.toggleSection('changes'),
-      headerActions: h(Fragment, null,
-        h('button', { className: 'sol-exp-hdr-btn', title: t('scm.refresh'), onClick: (e) => { e.stopPropagation(); actions.refresh() } },
-          h(IconRefreshOutline, { size: 14 })),
-        allChanges.length > 0
-          ? h('button', { className: 'sol-exp-hdr-btn', title: t('scm.stageAll'), onClick: (e) => { e.stopPropagation(); actions.stageAll() } },
-              h(IconPlusOutline, { size: 14 }))
-          : null,
-        allChanges.length > 0
-          ? h('button', { className: 'sol-exp-hdr-btn danger', title: t('scm.discardAll'), onClick: (e) => { e.stopPropagation(); actions.discardAll() } },
-              h(IconTrashOutline, { size: 14 }))
-          : null),
-    },
-      allChanges.length === 0
-        ? h('div', { style: { padding: '4px 12px 8px 24px', fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' } }, t('scm.changes.none'))
-        : null,
-      allChanges.map((item) => h(ScmItem, { key: item.path, item, section: 'changes', actions })),
-    ),
-
-    staged.length > 0
-      ? h(Section, {
-          id: 'staged', title: t('scm.staged'), count: staged.length,
-          collapsed: collapsed('staged'), onToggle: () => actions.toggleSection('staged'),
-          headerActions: h('button', { className: 'sol-exp-hdr-btn', title: t('scm.unstageAll'), onClick: (e) => { e.stopPropagation(); actions.unstageAll() } },
-            h(IconCloseOutline, { size: 14 })),
-        },
-          staged.map((item) => h(ScmItem, { key: item.path, item, section: 'staged', actions })))
-      : null,
-  )
 
   const repoRow = (r: { path: string; name: string; branch: string; kind?: string }): ReactNode => {
     // Optional because older hosts omit `kind`; never invent one when absent.
@@ -256,100 +221,160 @@ export function ScmPanel({ scm, commits, root, actions }: ScmPanelProps): ReactN
   }
 
   const remotePanel = scm.remotePanelOpen
-    ? h('div', { style: { margin: '6px 0', padding: '8px', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '6px', fontSize: '12px' } },
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' } },
+    ? h('div', { className: 'sol-exp-scm-inline-panel' },
+        h('div', { className: 'sol-exp-scm-inline-head' },
           h('b', null, t('scm.remote.title')), h('span', { style: { flex: 1 } }),
           h('button', { className: 'sol-exp-commit-detail-close', onClick: () => actions.remotePanel() }, '✕')),
         scm.remotesList.length === 0
-          ? h('div', { style: { color: 'var(--dsw-alias-label-tertiary)', padding: '2px 0 6px' } }, t('scm.remote.none'))
-          : scm.remotesList.map((r: { name: string; url: string }) => h('div', { key: r.name, style: { display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 0' } },
-              h('span', { style: { flex: 'none', fontWeight: 600 } }, r.name),
-              h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--dsw-alias-label-secondary)' } }, r.url),
+          ? h('div', { className: 'sol-exp-scm-inline-hint' }, t('scm.remote.none'))
+          : scm.remotesList.map((r: { name: string; url: string }) => h('div', { key: r.name, className: 'sol-exp-scm-inline-row' },
+              h('span', { className: 'sol-exp-scm-inline-name' }, r.name),
+              h('span', { className: 'sol-exp-scm-inline-url' }, r.url),
               h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.remoteSetUrl(r.name) }, t('scm.remote.setUrl')),
               h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.remoteRemove(r.name) }, t('scm.remote.remove')),
             )),
-        h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
+        h('div', { className: 'sol-exp-scm-inline-add' },
           h('input', {
-            className: 'sol-exp-commit-input', style: { minHeight: 0, height: '26px', flex: 1 },
+            className: 'sol-exp-commit-input sol-exp-scm-inline-input',
             placeholder: t('scm.remote.name'), value: scm.remoteName,
             onChange: (e) => actions.remoteName(e.target.value),
           }),
           h('input', {
-            className: 'sol-exp-commit-input', style: { minHeight: 0, height: '26px', flex: 2 },
+            className: 'sol-exp-commit-input sol-exp-scm-inline-input',
             placeholder: t('scm.remote.url'), value: scm.remoteUrl,
             onChange: (e) => actions.remoteUrl(e.target.value),
           }),
-          h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.remoteAdd() }, t('scm.remote.addBtn')),
-        ))
+          h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.remoteAdd() }, t('scm.remote.addBtn'))))
     : null
 
   const branchPanel = scm.branchPanelOpen
-    ? h('div', { style: { margin: '6px 0', padding: '8px', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '6px', fontSize: '12px' } },
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' } },
+    ? h('div', { className: 'sol-exp-scm-inline-panel' },
+        h('div', { className: 'sol-exp-scm-inline-head' },
           h('b', null, t('scm.branch.title')), h('span', { style: { flex: 1 } }),
           h('button', { className: 'sol-exp-commit-detail-close', onClick: () => actions.branchPanel() }, '✕')),
-        h('div', { style: { color: 'var(--dsw-alias-label-tertiary)', margin: '2px 0' } }, t('scm.branch.local')),
+        h('div', { className: 'sol-exp-scm-inline-hint' }, t('scm.branch.local')),
         scm.branchesList.filter((b: { isRemote?: boolean }) => !b.isRemote).map((b: { name: string; current?: boolean; shortHash?: string; subject?: string; upstream?: string }) =>
-          h('div', { key: b.name, style: { display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 0', cursor: 'pointer' }, onClick: () => actions.branchCheckout(b.name) },
-            h('span', { style: { flex: 'none', width: '14px' } }, b.current ? '➤' : ''),
-            h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, b.name),
-            b.shortHash ? h('span', { style: { flex: 'none', fontSize: '10px', color: 'var(--dsw-alias-label-tertiary)' } }, b.shortHash) : null,
-            h('button', { className: 'sol-exp-commit-detail-btn', style: { padding: '1px 5px' }, title: t('scm.branch.rename'), onClick: (e) => { e.stopPropagation(); actions.branchRename(b.name) } }, '✎'),
+          h('div', { key: b.name, className: 'sol-exp-scm-inline-row sol-exp-scm-branch-row', onClick: () => actions.branchCheckout(b.name) },
+            h('span', { className: 'sol-exp-scm-branch-current' }, b.current ? '➤' : ''),
+            h('span', { className: 'sol-exp-scm-inline-name' }, b.name),
+            b.shortHash ? h('span', { className: 'sol-exp-scm-branch-hash' }, b.shortHash) : null,
+            h('button', { className: 'sol-exp-commit-detail-btn sol-exp-scm-mini-btn', title: t('scm.branch.rename'), onClick: (e) => { e.stopPropagation(); actions.branchRename(b.name) } }, '✎'),
             !b.current
               ? h(Fragment, null,
-                  h('button', { className: 'sol-exp-commit-detail-btn', style: { padding: '1px 5px' }, title: t('scm.branch.merge'), onClick: (e) => { e.stopPropagation(); actions.branchMerge(b.name) } }, '⤵'),
-                  h('button', { className: 'sol-exp-commit-detail-btn', style: { padding: '1px 5px' }, title: t('scm.branch.publish'), onClick: (e) => { e.stopPropagation(); actions.branchPublish(b.name) } }, '↑'),
-                  h('button', { className: 'sol-exp-commit-detail-btn', style: { padding: '1px 5px' }, onClick: (e) => { e.stopPropagation(); actions.branchDelete(b.name) } }, '✕'))
+                  h('button', { className: 'sol-exp-commit-detail-btn sol-exp-scm-mini-btn', title: t('scm.branch.merge'), onClick: (e) => { e.stopPropagation(); actions.branchMerge(b.name) } }, '⤵'),
+                  h('button', { className: 'sol-exp-commit-detail-btn sol-exp-scm-mini-btn', title: t('scm.branch.publish'), onClick: (e) => { e.stopPropagation(); actions.branchPublish(b.name) } }, '↑'),
+                  h('button', { className: 'sol-exp-commit-detail-btn sol-exp-scm-mini-btn', onClick: (e) => { e.stopPropagation(); actions.branchDelete(b.name) } }, '✕'))
               : null,
           )),
-        h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
+        h('div', { className: 'sol-exp-scm-inline-add' },
           h('input', {
-            className: 'sol-exp-commit-input', style: { minHeight: 0, height: '26px', flex: 1 },
+            className: 'sol-exp-commit-input sol-exp-scm-inline-input',
             placeholder: t('scm.branch.name'), value: scm.branchName,
             onChange: (e) => actions.branchName(e.target.value),
           }),
-          h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.branchCreate() }, t('scm.branch.create')),
-        ))
+          h('button', { className: 'sol-exp-commit-detail-btn', onClick: () => actions.branchCreate() }, t('scm.branch.create'))))
     : null
 
-  const bottom = h(Fragment, null,
-    h(Section, {
-      id: 'repository', title: t('scm.repository'),
-      count: (status?.ahead || 0) > 0 || (status?.behind || 0) > 0 ? `↑${status?.ahead || 0} ↓${status?.behind || 0}` : '',
-      collapsed: collapsed('repository'), onToggle: () => actions.toggleSection('repository'),
-      headerActions: h(Fragment, null,
-        syncBtn('↓', t('scm.sync.fetch'), actions.fetch),
-        syncBtn('⇣', t('scm.sync.pull'), actions.pull),
-        syncBtn('↑', t('scm.sync.push'), actions.push),
-        syncBtn('⟳', t('scm.sync.sync'), actions.sync)),
-    },
-      h('div', { style: { padding: '4px 12px 8px 24px', display: 'flex', flexDirection: 'column' } },
-        scm.repos.map(repoRow),
-        h('div', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)', marginBottom: '6px' } }, t('scm.repository.branch')),
-        h('span', { className: 'sol-exp-branch-pill' }, '⑂ ' + (status?.branch || '')),
-        remotePanel,
-        branchPanel,
-      )),
+  const conflictsBlock = conflicts.length > 0
+    ? h(SubSection, {
+        id: 'conflicts', title: t('scm.merge.changes'), count: conflicts.length,
+        collapsed: collapsed('conflicts'), onToggle: () => actions.toggleSection('conflicts'),
+      },
+        conflicts.map((item) => h(ScmItem, { key: item.path, item, section: 'conflicts', actions })))
+    : null
 
-    h(Section, {
-      id: 'commits', title: t('scm.repository.commits'),
-      collapsed: collapsed('commits'), onToggle: () => actions.toggleSection('commits'),
-    },
-      h('div', { style: { padding: '4px 12px 8px 24px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } },
-        h(CommitsList, {
-          commits,
-          actions: {
-            commitDetail: (hash) => actions.commitDetail(hash),
-            commitCheckout: (hash) => actions.commitCheckout(hash),
-            commitsScroll: (e) => actions.commitsScroll(e),
-          },
-        }))),
-  )
+  const stagedBlock = staged.length > 0
+    ? h(SubSection, {
+        id: 'staged', title: t('scm.staged'), count: staged.length,
+        collapsed: collapsed('staged'), onToggle: () => actions.toggleSection('staged'),
+        headerActions: h('button', { className: 'sol-exp-hdr-btn', title: t('scm.unstageAll'), onClick: (e) => { e.stopPropagation(); actions.unstageAll() } },
+          h(IconCloseOutline, { size: 12 })),
+      },
+        staged.map((item) => h(ScmItem, { key: item.path, item, section: 'staged', actions })))
+    : null
 
-  return h('div', { className: 'sol-exp-content' },
-    h('div', { className: 'sol-exp-scm-split' },
-      h('div', { className: 'sol-exp-scm-top', style: { flexBasis: scm.scmSplit + '%' } }, top),
-      h('div', { className: 'sol-exp-scm-divider', onPointerDown: (e) => actions.dividerDown(e) }),
-      h('div', { className: 'sol-exp-scm-bottom', style: { flexBasis: (100 - scm.scmSplit) + '%' } }, bottom),
+  return h('div', {
+    className: 'sol-exp-content',
+    // The view itself scrolls; reaching the bottom loads the next commit page.
+    onScroll: (e) => actions.commitsScroll(e),
+  },
+    h('div', { className: 'sol-exp-scm-sections' },
+      // 1. Repository — sync actions, worktree switcher and branch.
+      h(Section, {
+        id: 'repository', title: t('scm.repository'), count: syncCount,
+        collapsed: collapsed('repository'), onToggle: () => actions.toggleSection('repository'),
+        headerActions: h(Fragment, null,
+          syncBtn('↓', t('scm.sync.fetch'), actions.fetch),
+          syncBtn('⇣', t('scm.sync.pull'), actions.pull),
+          syncBtn('↑', t('scm.sync.push'), actions.push),
+          syncBtn('⟳', t('scm.sync.sync'), actions.sync)),
+      },
+        h('div', { className: 'sol-exp-scm-repository-body' },
+          scm.repos.map(repoRow),
+          h('div', { className: 'sol-exp-scm-branch-line' },
+            h('span', null, t('scm.repository.branch')),
+            h('span', { className: 'sol-exp-branch-pill' }, '⑂ ' + (status?.branch || ''))),
+          remotePanel,
+          branchPanel)),
+
+      // Commit message — fixed between Repository and Changes, like VS Code, so
+      // it stays reachable even while the Changes group is collapsed.
+      h('div', { className: 'sol-exp-commit-box' },
+        h('textarea', {
+          className: 'sol-exp-commit-input',
+          placeholder: t('scm.commit.placeholder') + (status?.branch && status.branch !== 'unknown' ? ' (' + status.branch + ')' : ''),
+          value: scm.commitMessage,
+          onChange: (e) => actions.commitMsg(e.target.value),
+        }),
+        h('div', { className: 'sol-exp-commit-row' },
+          h('button', {
+            className: 'sol-exp-commit-btn',
+            disabled: scm.committing || !scm.commitMessage.trim(),
+            onClick: () => actions.commit(),
+          }, scm.committing ? t('scm.committing') : t('scm.commit.button')),
+          h('button', {
+            className: 'sol-exp-ai-btn', title: t('scm.ai.gen'),
+            disabled: scm.aiGenerating || !(staged.length > 0),
+            onClick: () => actions.genCommitMsg(),
+          }, '✦'))),
+
+      // 2. Changes — conflicts, staged group and working-tree changes.
+      h(Section, {
+        id: 'changes', title: t('scm.changes'), count: allChanges.length,
+        collapsed: collapsed('changes'), onToggle: () => actions.toggleSection('changes'),
+        headerActions: h(Fragment, null,
+          h('button', { className: 'sol-exp-hdr-btn', title: t('scm.refresh'), onClick: (e) => { e.stopPropagation(); actions.refresh() } },
+            h(IconRefreshOutline, { size: 14 })),
+          allChanges.length > 0
+            ? h('button', { className: 'sol-exp-hdr-btn', title: t('scm.stageAll'), onClick: (e) => { e.stopPropagation(); actions.stageAll() } },
+                h(IconPlusOutline, { size: 14 }))
+            : null,
+          allChanges.length > 0
+            ? h('button', { className: 'sol-exp-hdr-btn danger', title: t('scm.discardAll'), onClick: (e) => { e.stopPropagation(); actions.discardAll() } },
+                h(IconTrashOutline, { size: 14 }))
+            : null),
+      },
+        conflictsBlock,
+        stagedBlock,
+        allChanges.length === 0 && staged.length === 0 && conflicts.length === 0
+          ? h('div', { className: 'sol-exp-scm-empty' }, t('scm.changes.none'))
+          : null,
+        allChanges.map((item) => h(ScmItem, { key: item.path, item, section: 'changes', actions }))),
+
+      // 3. Graph — the commit graph, VS Code's Source Control Graph.
+      h(Section, {
+        id: 'commits', title: t('scm.graph'),
+        collapsed: collapsed('commits'), onToggle: () => actions.toggleSection('commits'),
+      },
+        collapsed('commits')
+          ? null
+          : h('div', { className: 'sol-exp-scm-commits-body' },
+              h(CommitsList, {
+                commits,
+                actions: {
+                  commitDetail: (hash) => actions.commitDetail(hash),
+                  commitCheckout: (hash) => actions.commitCheckout(hash),
+                },
+              }))),
     ))
 }
