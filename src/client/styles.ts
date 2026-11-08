@@ -716,7 +716,7 @@ html[data-dshm-mode="mobile"] [data-conversation-header-corner] [data-sidebar-ri
   padding: var(--sol-exp-space-8) var(--sol-exp-space-12);
   border-radius: var(--sol-exp-radius);
   border: var(--sol-exp-hairline) solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-3));
+  background: var(--dsw-alias-bg-overlay, var(--dsw-alias-bg-layer-3, Canvas));
   color: var(--sol-exp-label-primary);
   font: var(--sol-exp-meta-font);
   box-shadow: var(--dsw-elevation-prominent);

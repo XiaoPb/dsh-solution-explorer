@@ -31,16 +31,21 @@ function devicePortrait(): boolean {
   }
 }
 
+/** The shell's own phone breakpoint (same 768px boundary as its drawer mode). */
+const PHONE_MAX_WIDTH = 767
+
 /**
  * Whether this session runs on a phone held upright. The shell flag marks the
  * mobile form factor; the actual orientation still decides whether the panel
- * is a fullscreen sheet. A coarse pointer plus a portrait viewport is the
- * fallback for hosts that never set the attribute.
+ * is a fullscreen sheet. A coarse pointer plus a portrait phone-sized viewport
+ * is the fallback for hosts that never set the attribute. Tablets stay in the
+ * normal column even when they are coarse and portrait.
  * @returns true when the panel should behave as a fullscreen phone sheet.
  */
 export function isPortraitPhone(): boolean {
-  if (dshmMode() === "mobile") return devicePortrait()
+  const phoneSized = window.innerWidth <= PHONE_MAX_WIDTH
+  if (dshmMode() === "mobile") return phoneSized && devicePortrait()
   try {
-    return window.matchMedia("(pointer: coarse)").matches && devicePortrait()
+    return window.matchMedia("(pointer: coarse)").matches && phoneSized && devicePortrait()
   } catch { return false }
 }
