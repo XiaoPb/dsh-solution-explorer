@@ -38,7 +38,7 @@ export function ContextMenu({ menu, onClose }: ContextMenuProps): ReactNode {
     const el = ref.current
     if (el === null) return
     const box = el.getBoundingClientRect()
-    const rootStyle = getComputedStyle(document.documentElement)
+    const rootStyle = getComputedStyle(document.body)
     const edge = parseFloat(rootStyle.getPropertyValue('--sol-exp-menu-edge')) || EDGE
     // Custom-property values are not resolved to px; read the sheet's actual
     // padding, which is the computed safe-area inset.

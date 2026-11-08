@@ -7,7 +7,7 @@
 > 3. 视觉尺寸、分隔线、字体层级尽量沿用上游（DSH 官方右栏 / Files 面板）的 token 与几何；所有样式参数收敛到 token，规则中不写裸值；
 > 4. 顺带修掉手机端明显不符合触屏习惯的点：触控目标过小、SCM 操作只在 hover 出现、输入框字号、底部安全区等。
 >
-> 状态：**计划（未实施）** ｜ 影响文件：`styles.ts`、`PanelRoot.ts`、`layout/grid.ts`、`locales.ts`、`panel.ts`、`shared/ui.ts`、`explorer/ContextMenu.ts`、新增 `shared/labels.ts` / `layout/MobileHeader.ts` / `scripts/check-style-tokens.mjs` ｜ 不改：手势仲裁、原生右栏桥、宿主 DOM、桌面端布局。
+> 状态：**已实施（P0 + P1 核心，P2 未做；待最终回归）** ｜ 分支：`feat/mobile-sidebar-token-header` ｜ 影响文件：`styles.ts`、`PanelRoot.ts`、`layout/grid.ts`、`locales.ts`、`panel.ts`、`shared/ui.ts`、`explorer/ContextMenu.ts`、`shared/labels.ts`、`layout/MobileHeader.ts` ｜ 不改：手势仲裁、原生右栏桥、宿主 DOM、桌面端布局。
 >
 > 依据：本仓库源码逐行核对 + 宿主 DSH 0.2.x 打包产物（`@deepseek-ai/dsh-client-ui-layout`、`dsh-client-ui-sidebar-files`、`dsh-client-ui-sidebar-right`、`dsh-client-ui-theme`）+ 同机 `dsh-mobile-layout` 0.4.8 的公开 CSS 契约。文中提到的“上游”均指这些官方实现。
 
@@ -21,11 +21,12 @@
 | “标题栏往下放一行”怎么做 | 新增一个**只在手机 sheet 显示**的信息头（`MobileHeader`），放在 `.sol-exp-activity` 之前。信息头 = 顶部安全区 + `var(--sol-exp-info-row-height)`；现有标题栏（`.sol-exp-activity`）因此整体下移一行。桌面端不渲染高度、不改变现有布局。 |
 | 第一行放什么信息 | 工作区名（basename，长按/悬停看完整路径）、Git 分支、ahead/behind、变更数、加载状态，以及右侧的关闭按钮。全部来自现有 `state.root` / `state.scm`，不新增后端接口。 |
 | 样式如何继承上游 | 采用官方 Files 面板的头部节奏：行高/控件尺寸/分隔线/圆角/字体全部收敛到 `--sol-exp-*` token；颜色、字体、圆角、焦点环只 alias 上游 `--dsw-*`。手机 coarse pointer 只重绑 token（`--sol-exp-row-height` → touch target），规则本身不出现 44px。 |
-| 参数如何避免写死 | 新增 §4.7 Token 层：几何值只在 `:root` 定义一次；颜色/字体/圆角/焦点环全部 `var(--dsw-*)`；规则只用 `var(--sol-exp-*)` / `var(--dsw-*)`。上游没有 spacing/size token，已用插件内语义 token 补齐，并标注来源。 |
+| 参数如何避免写死 | 新增 §4.7 Token 层：几何值只在 `body` 定义一次；颜色/字体/圆角/焦点环全部 `var(--dsw-*)`；规则只用 `var(--sol-exp-*)` / `var(--dsw-*)`。上游主题 token 挂在 `body`，token 层也必须在 `body`（写在 `:root` 会解析不到主题色，导致背景透明）。 |
 | 手机操作习惯还差什么 | 触控目标不一致（活动栏 30px、工具栏 26/36px、SCM 行内按钮 20px、SCM 行约 30px、终端页签 26px）；SCM 的 stage/discard 只在 hover 显示，触屏上根本点不到；搜索框 24px 高、13px 字号；底部没有安全区；键盘弹起时 fixed sheet 不会缩。 |
 | 会不会碰坏现有手势 / 工作台 | 不会。本次不新增任何全局触摸监听，不改 `gestures.ts` / `gesture-guard.ts` / `native-rightbar.ts`。信息头只增加一个普通按钮（关闭），复用 `commands.togglePanel`。 |
 | 最大风险 | `env(safe-area-inset-*)` 在宿主 WebView 里可能为 0（官方 `index.html` 的 viewport 没有 `viewport-fit=cover`）。因此信息头自身必须有 `--sol-exp-top-clearance-min` + `--sol-exp-info-row-height` 的 token 兜底，不能把“不被遮挡”完全押在 `env()` 上。 |
 | 推荐版本 | `1.1.0`（新增手机信息头与多组触屏可访问性调整，属于用户可见的 minor 变更）。 |
+| 当前实现 | P0 + P1 核心已落地：token 层、信息头、安全区、标题栏下移、44px 触控、SCM 常显、搜索输入、底部安全区、toast/菜单。P2（键盘 `visualViewport`、底部操作条、token 审计脚本）未做。详见 §10。 |
 
 ---
 
@@ -269,7 +270,7 @@ sheet 的 `padding-bottom` 为 0，终端、SCM 提交按钮、toast、模态框
 完整定义见 §4.7，这里只列语义（所有值都来自 token，不在这里写裸值）：
 
 ```css
-:root {
+body {
   /* 顶部：宿主变量 > env > 插件兜底 token */
   --sol-exp-safe-top: max(env(safe-area-inset-top, 0px), var(--dshm-safe-top, 0px), var(--sol-exp-top-clearance-min));
   --sol-exp-safe-right: max(env(safe-area-inset-right, 0px), var(--dshm-safe-right, 0px), 0px);
@@ -324,12 +325,12 @@ sheet 的 `padding-bottom` 为 0，终端、SCM 提交按钮、toast、模态框
 上游主题提供颜色、字体、圆角、焦点环、动效 token，但**没有 spacing / size / control-height 这类几何 token**（已核对 `dsh-client-ui-theme` 0.2.x）。所以本次在插件内建一层 `--sol-exp-*` 语义 token：
 
 - 颜色、字体、圆角、焦点环、动效**只 alias 上游 token**，不新增颜色值；
-- 几何值（行高、控件尺寸、间距、触控目标）只在 `:root` 的 token 定义处出现一次，所有规则用 `var()`；
+- 几何值（行高、控件尺寸、间距、触控目标）只在 `body` 的 token 定义处出现一次，所有规则用 `var()`；
 - 手机/触屏只**重绑 token**（`--sol-exp-row-height` → `var(--sol-exp-row-height-touch)`），不在规则里散落 44px；
 - sheet 的顶部/底部/左右安全区由 `--sol-exp-safe-*` 统一出口，portaled 的 toast / modal 也能复用。
 
 ```css
-:root {
+body {
   /* 触控目标：手机端主要可点区域的唯一来源 */
   --sol-exp-touch-target: 44px;
 
@@ -363,7 +364,7 @@ sheet 的 `padding-bottom` 为 0，终端、SCM 提交按钮、toast、模态框
   --sol-exp-ease: var(--ds-ease-in-out, ease);
 
   /* 表面 / 文本 / 交互色：不新增颜色值 */
-  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill);
+  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
   --sol-exp-label-primary: var(--dsw-alias-label-primary);
   --sol-exp-label-secondary: var(--dsw-alias-label-secondary);
   --sol-exp-label-tertiary: var(--dsw-alias-label-tertiary);
@@ -396,7 +397,7 @@ sheet 的 `padding-bottom` 为 0，终端、SCM 提交按钮、toast、模态框
 }
 
 @media (pointer: coarse) {
-  :root {
+  body {
     --sol-exp-row-height: var(--sol-exp-row-height-touch);
     --sol-exp-control-size: var(--sol-exp-control-size-touch);
     --sol-exp-scm-action-size: var(--sol-exp-touch-target);
@@ -941,9 +942,9 @@ CSS：
 
 ### 5.7 上下文菜单 / toast / 模态框的边界
 
-- `ContextMenu.ts` 用 `window.innerHeight` 夹取菜单底部；手机上加安全区。因为 §4.7 的 token 定义在 `:root`，可以直接从 `documentElement` 读，不需要知道菜单挂在哪个父节点：
+- `ContextMenu.ts` 用 `window.innerHeight` 夹取菜单底部；手机上加安全区。因为 §4.7 的 token 定义在 `body`，从 `document.body` 读，不需要知道菜单挂在哪个父节点：
   ```ts
-  const rootStyle = getComputedStyle(document.documentElement)
+  const rootStyle = getComputedStyle(document.body)
   const edge = parseFloat(rootStyle.getPropertyValue('--sol-exp-menu-edge')) || 0
   const safeBottom = parseFloat(rootStyle.getPropertyValue('--sol-exp-safe-bottom')) || 0
   top: Math.max(edge, Math.min(menu.y - window.scrollY, window.innerHeight - box.height - edge - safeBottom))
@@ -1011,7 +1012,7 @@ CSS：
 | `src/client/shared/labels.ts` | **新增**：`workspaceName` / `syncLabel` / `isUsableBranch` 纯函数（不 import React） | ~30 行 |
 | `src/client/layout/MobileHeader.ts` | **新增**：信息头组件（消费 `labels.ts`） | ~80 行 |
 | `src/client/PanelRoot.ts` | 渲染 `MobileHeader`；活动栏改为 `<button>` 语义（可选） | ~20 行 |
-| `src/client/styles.ts` | `:root` Token 层（安全区/行高/控件/间距/字体 alias）、信息头、上游几何、coarse 触控块、底部安全区、overscroll | ~220 行 |
+| `src/client/styles.ts` | `body` Token 层（安全区/行高/控件/间距/字体 alias）、信息头、上游几何、coarse 触控块、底部安全区、overscroll | ~300 行 |
 | `src/client/layout/grid.ts` | 手机分支置/清 `data-sol-exp-sheet` | ~4 行 |
 | `src/client/locales.ts` | 5 个新 key（zh/en） | ~10 行 |
 | `src/client/panel.ts` | P0：`togglePanel` 关闭守卫对手机放行；可选：`visualViewport` 监听、`openScmBranch` 动作 | ~40 行 |
@@ -1056,7 +1057,7 @@ const activity = col.querySelector('.sol-exp-activity')
 const close = col.querySelector('[data-sol-exp-close]')
 
 const r = (el) => { const b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height } }
-const rootStyle = getComputedStyle(document.documentElement)
+const rootStyle = getComputedStyle(document.body)
 const token = (n) => parseFloat(rootStyle.getPropertyValue(n)) || 0
 const safeTop = rootStyle.getPropertyValue('--sol-exp-safe-top').trim()
 
@@ -1091,7 +1092,7 @@ return {
 
 1. 颜色只出现 `var(--dsw-*)` / `var(--sol-exp-*)`，不出现 `#hex` / `rgb()` / `hsl()`；
 2. 行高、宽度、间距、圆角只出现 `var(--sol-exp-*)` / `var(--dsw-*)` / `0` / `100%` / `auto`；
-3. 裸 `38px / 28px / 44px / 12px / 16px` 只允许出现在 §4.7 的 `:root` token 定义里；
+3. 裸 `38px / 28px / 44px / 12px / 16px` 只允许出现在 §4.7 的 `body` token 定义里；
 4. 可用 `scripts/check-style-tokens.mjs`（P2）自动扫描改动选择器，或在 review 时对 §5.3 的规则做一次 grep。
 
 **建议脚本行为**：读取 `src/client/styles.ts` 的 `STYLES` 字符串 → 用 `lightningcss` 解析 → 只检查本次新增/改动的选择器集合 → 对 `height / width / min-height / min-width / padding / margin / gap / border-radius / font-size / border` 的值做白名单（`var(...)`、`0`、`auto`、`100%`、`none`、`flex` 等），发现裸 px 时打印选择器 + 行号并非零退出。
@@ -1150,7 +1151,7 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 | token 名与宿主/其他插件冲突 | 覆盖别人的变量 | 全部使用 `--sol-exp-` 前缀；不改宿主 `--dshm-*` / `--dsw-*`，只读取。 |
 | 规则里又写回裸值 | token 层形同虚设 | `scripts/check-style-tokens.mjs` + review 双重检查；新增/改动选择器不允许裸 px / 裸颜色。 |
 | 信息头数据更新不及时 | 分支/变更数陈旧 | `loadGitStatus` 在分支/变更变化时会 `render()`；信息头只读同一 state。若发现不刷新，在 `loadGitStatus` 的 render 条件里补 `gitChangesCount` 比较，不新增轮询。 |
-| `ContextMenu` 读取 CSS 变量作用域错误 | 菜单底部仍越界 | §4.7 token 定义在 `:root`，从 `documentElement` 读即可；不要从 `<html>` 上读 `--dshm-*`（那是宿主变量）。 |
+| `ContextMenu` 读取 CSS 变量作用域错误 | 菜单底部仍越界 | §4.7 token 定义在 `body`，从 `document.body` 读即可；不要从 `<html>` 上读 `--dshm-*`（那是宿主变量）。 |
 | CSS specificity 与现有 `styles.ts` 规则冲突 | 行高/按钮尺寸被旧规则覆盖 | 合并现有 `@media (pointer: coarse)` 块，只保留一处；新规则放在文件末尾并带 `[data-sol-exp-sheet]` 前缀。 |
 | 未来宿主改 DOM | sheet 标记/信息头失效 | 只依赖本插件自己的 `[data-solution-explorer]` 与 `data-sol-exp-sheet`；不依赖宿主哈希类名。 |
 
@@ -1169,6 +1170,64 @@ pnpm exec tsc -p tsconfig.host.json   --noUnusedLocals --noUnusedParameters --no
 3. **信息头是否可点击**：P0 只做展示 + 关闭；分支/变更点击跳 SCM 是否值得加？建议 P1 再加，避免 P0 引入额外命令。
 4. **底部操作条**：是否要在 P2 把新建/刷新移到底部？这是对“手机操作习惯”最有效的改进，但会改变桌面/手机的操作位置一致性，建议单独评审。
 5. **视图头是否保留标题**：P0 方案是手机隐藏、桌面保留；如果用户希望手机上仍看到“文件浏览器”文字，可以改成显示当前视图名而不是工作区名（需要 `layout.sheet` 状态或 CSS 伪元素方案）。
+
+---
+
+## 10. 实施记录
+
+### 10.1 分支与提交
+
+- 分支：`feat/mobile-sidebar-token-header`
+- 提交：
+  - `8cf8a93` `docs(phone): plan the mobile sidebar safe-area and token layer`
+  - `3349747` `feat(phone): add pure workspace/branch label helpers`
+  - `c05aec4` `feat(phone): render a workspace header above the sidebar title bar`
+  - `fd05323` `feat(phone): tokenize sidebar chrome and show the info header on the sheet`
+  - `f29638e` `fix(phone): keep toasts and context menus above the gesture bar`
+
+### 10.2 已落地内容
+
+| 项 | 实现 |
+| --- | --- |
+| Token 层 | `styles.ts` 顶部 `body` 定义 `--sol-exp-*`；颜色/字体/圆角/焦点环 alias `--dsw-*`；coarse 只重绑行高/控件/SCM/终端尺寸 token |
+| 信息头 | 新增 `layout/MobileHeader.ts`；`PanelRoot` 渲染在标题栏之前；CSS 默认 `display:none`，仅 `[data-sol-exp-sheet]` 显示 |
+| 标题栏下移 | 手机 sheet 打开时信息头占 `--sol-exp-safe-top + --sol-exp-info-row-height`，`.sol-exp-activity` 从第一行变为第二行 |
+| Sheet 标记 | `applyGrid()` 在 grid 轨道 early return 之前置/清 `data-sol-exp-sheet`，避免 shell 轨道尚未就绪时信息头不出现 |
+| 关闭守卫 | `panel.ts` 的 `togglePanel` 对 `isPortraitPhone()` 放行，`autoOpen=false` / `panelWidth=0` 时也能用信息头关闭 |
+| 触控 | 活动栏/视图头 44px；SCM 行/分区/提交按钮放大；SCM 行内操作在 coarse 下常显；搜索输入 44px 高 / 16px 字号 |
+| 底部安全区 | `.sol-exp-panel` 在 sheet 下加 `padding-bottom: var(--sol-exp-safe-bottom)`；toast/右键菜单/模态框同步避让 |
+| 文案 | `header.noGit` / `header.changes` / `header.workspace` / `header.branch` / `header.close`，zh/en 同步 |
+| 约定 | `styles.ts` 顶部注释与 `CONTRIBUTING.md` 补充 `--sol-exp-*` 几何 token 约定 |
+
+### 10.3 与计划的偏差
+
+1. **Sheet 标记位置**：计划写在 `isPortraitPhone()` 分支内；实际放在 `applyGrid()` 早退之前，因为 `shellTracks` 未就绪时该分支根本不会执行，信息头会缺席第一帧。
+2. **Toast**：计划只要求改 `bottom` 一行；实际把内联样式抽成 `.sol-exp-toast` class，位置/尺寸/层级全部走 token，避免新 token 只服务一行内联样式。
+3. **右键菜单安全区**：自定义属性值不会在 `getComputedStyle` 里解析成 px；改为读取 `.sol-exp-panel` 的实际 `padding-bottom`，否则 `parseFloat` 恒为 0。
+4. **Token 作用域修正（背景透明问题）**：首版把 token 层写在 `:root`，但上游主题的 `--dsw-*` 颜色 token 挂在 `body`；`--sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill)` 在 `:root` 解析不到，导致 `.sol-exp-panel` / 信息头背景透明、内容互相重叠。已改为在 `body` 定义 token，并给 chrome 背景加 `var(--dsw-alias-bg-base)` 兜底。
+5. **未做**：`visualViewport` 键盘避让、底部操作条（P2）、`scripts/check-style-tokens.mjs`；这三项保留为后续独立提交，避免把仍需要真机键盘验证的改动混进本次。
+
+### 10.4 验证结果
+
+- `pnpm test`：15/15 通过（含新增 `test/labels.test.ts`）。
+- `pnpm exec tsc -p tsconfig.client.json --noUnusedLocals --noUnusedParameters --noEmit`：通过。
+- `pnpm build`：通过（`lib/index.js`、`lib/client.js`）。
+- AVD：`emulator-5554`，1080×2400，部署新 `lib/client.js` 后通过 CDP 实测：
+  - sheet 打开：`data-sol-exp-sheet="1"`，信息头 `display:flex`；
+  - 信息头高 56（`12px` 顶部兜底 + `44px` 内容行），标题栏 `top=56`、高 44；
+  - 关闭按钮 44×44，`top=12`；
+  - 视图头 44px，标题隐藏；搜索输入 44px 高、16px 字号，搜索页标题行隐藏；
+  - 临时把 `--sol-exp-safe-top` 覆盖为 `34px`：信息头高 78、标题栏 `top=78`，证明安全区完全由 token 驱动；
+  - 信息头/面板背景计算值为 `rgb(249, 250, 251)`（非 `rgba(0,0,0,0)`），排除首版的透明背景问题；
+  - 信息头关闭按钮点击后 sheet `display:none`、`data-sol-exp-sheet` 被移除。
+
+### 10.5 仍需回归
+
+- 桌面/平板细指针下信息头 `display:none`、行高 38、按钮 28；建议用 Web GUI 桌面窗口做一次截图对比。
+- 有 Git 仓库的工作区：SCM 行内 stage/discard 在 AVD 上实际可点（当前 AVD 工作区 `demo-docs` 非 Git 仓库，只验证了 CSS/尺寸）。
+- 真机/带刘海设备上的 `env()` 实际值；当前 AVD 的 `safe-top` 走的是 12px 兜底。
+- `autoOpen=false` 且 `panelWidth=0` 的关闭路径（代码已放行，建议设置页实测一次）。
+- 键盘弹起、终端打开、横竖屏旋转、toast/右键菜单底部避让。
 
 ---
 

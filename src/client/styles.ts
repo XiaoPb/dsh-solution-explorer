@@ -6,7 +6,7 @@ export const STYLES = `
    Upstream exposes colors, fonts, radii, focus rings and motion, but no
    spacing / size / control-height tokens. Geometry therefore lives here once;
    every rule below consumes these tokens and never repeats the literals. */
-:root {
+body {
   --sol-exp-touch-target: 44px;
   --sol-exp-row-height: 38px;
   --sol-exp-row-height-touch: var(--sol-exp-touch-target);
@@ -31,7 +31,7 @@ export const STYLES = `
   --sol-exp-focus-offset: -2px;
   --sol-exp-duration: var(--ds-transition-duration, .2s);
   --sol-exp-ease: var(--ds-ease-in-out, ease);
-  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill);
+  --sol-exp-chrome-bg: var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
   --sol-exp-label-primary: var(--dsw-alias-label-primary);
   --sol-exp-label-secondary: var(--dsw-alias-label-secondary);
   --sol-exp-label-tertiary: var(--dsw-alias-label-tertiary);
@@ -60,7 +60,7 @@ export const STYLES = `
 }
 
 @media (pointer: coarse) {
-  :root {
+  body {
     --sol-exp-row-height: var(--sol-exp-row-height-touch);
     --sol-exp-control-size: var(--sol-exp-control-size-touch);
     --sol-exp-scm-action-size: var(--sol-exp-touch-target);
